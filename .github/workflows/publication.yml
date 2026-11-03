@@ -57,6 +57,14 @@ jobs:
           & $iscc "/DVersion=$env:VERSION" installateur.iss
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup a échoué" }
 
+      - name: Garder un aperçu de l'installateur
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apercu-installateur
+          path: build/sortie/Forever-Addons-Manager-Setup.exe
+          retention-days: 7
+
       - name: Publier la Release
         if: github.ref_type == 'tag'
         shell: pwsh

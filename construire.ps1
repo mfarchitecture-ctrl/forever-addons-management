@@ -25,7 +25,7 @@ VSVersionInfo(
   ffi=FixedFileInfo(filevers=($v), prodvers=($v), mask=0x3f, flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0)),
   kids=[
     StringFileInfo([StringTable('040C04B0', [
-      StringStruct('CompanyName', '$nom'),
+      StringStruct('CompanyName', 'Hamax'),
       StringStruct('FileDescription', '$nom'),
       StringStruct('FileVersion', '$version'),
       StringStruct('ProductName', '$nom'),

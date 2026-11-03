@@ -1,4 +1,4 @@
-; Installateur de Forever Addons Manager (Inno Setup), compilé par GitHub Actions.
+﻿; Installateur de Forever Addons Manager (Inno Setup), compilé par GitHub Actions.
 ; Installé pour l'utilisateur seul : aucun droit administrateur, aucune fenêtre de contrôle du compte.
 #define Nom "Forever Addons Manager"
 #ifndef Version
@@ -10,9 +10,9 @@ AppId={{7E3A9F52-6C1D-4B8E-9A47-2F0C5D1E8B36}
 AppName={#Nom}
 AppVersion={#Version}
 AppVerName={#Nom} {#Version}
-AppPublisher=Aux Ptits Casus
+AppPublisher=Hamax
 DefaultDirName={localappdata}\Programs\{#Nom}
-DisableDirPage=yes
+DisableDirPage=no
 DisableProgramGroupPage=yes
 DisableReadyPage=yes
 PrivilegesRequired=lowest
@@ -22,12 +22,24 @@ SetupIconFile=ui\icone.ico
 UninstallDisplayIcon={app}\{#Nom}.exe
 Compression=lzma2
 SolidCompression=yes
-WizardStyle=modern
+WizardStyle=modern dark
+WizardSizePercent=100
+WizardImageFile=outils\installateur\grande-100.bmp,outils\installateur\grande-200.bmp
+WizardSmallImageFile=outils\installateur\petite-100.bmp,outils\installateur\petite-200.bmp
 CloseApplications=force
 RestartApplications=no
 
 [Languages]
 Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
+
+[Messages]
+fr.WizardSelectDir=Où installer l'appli ?
+fr.SelectDirDesc=Le dossier habituel convient très bien.
+fr.SelectDirLabel3=Forever Addons Manager sera installé ici.
+fr.SelectDirBrowseLabel=Clique sur Installer pour continuer, ou sur Parcourir pour choisir un autre dossier.
+fr.FinishedHeadingLabel=C'est prêt !
+fr.FinishedLabel=Forever Addons Manager est installé. Il se lancera aussi avec Windows, discret près de l'horloge.
+fr.ClickFinish=
 
 [InstallDelete]
 ; Repart d'un dossier propre : rien d'une ancienne version ne traîne

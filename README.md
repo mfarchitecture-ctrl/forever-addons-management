@@ -19,14 +19,6 @@ Sur le site CurseForge, clique sur **Install** : l'addon s'installe directement 
 
 L'appli n'écoute que sur ton PC. Elle se connecte uniquement à CurseForge et GitHub pour vérifier et télécharger les mises à jour, et n'envoie rien sur toi. Ta collection et tes notes restent dans `%LOCALAPPDATA%\Forever Addons Manager`, et ne sont pas effacées si tu désinstalles l'appli.
 
-## Développement
-
-```
-python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-powershell -ExecutionPolicy Bypass -File construire.ps1
-```
-
-Pour publier : monter `VERSION` dans `hamax.py`, compléter `CHANGELOG.md`, puis lancer `publier.ps1`. GitHub Actions compile l'installateur et crée la Release.
+## Crédits
 
 Police Barlow Condensed sous licence SIL OFL (voir `ui/polices/LICENCE.txt`).
