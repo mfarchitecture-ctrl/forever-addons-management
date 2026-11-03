@@ -1,0 +1,69 @@
+name: Publication
+
+# Chaque envoi sur main vérifie que l'appli se construit et démarre.
+# Une étiquette vX.Y.Z publie en plus la Release : les utilisateurs se voient alors proposer la mise à jour.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publication:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Lire la version
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path hamax.py -Pattern '^VERSION = "([\d.]+)"').Matches[0].Groups[1].Value
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}' -ne "v$version") {
+            throw "L'étiquette ${{ github.ref_name }} ne correspond pas à la version $version de hamax.py : publication annulée."
+          }
+
+      - name: Compiler l'appli
+        shell: pwsh
+        run: |
+          python -m pip install --no-input -r requirements.txt
+          ./construire.ps1 -Publication
+
+      - name: Contrôler que l'appli démarre
+        shell: pwsh
+        run: |
+          $exe = Get-Item "build/dist/Forever Addons Manager/Forever Addons Manager.exe"
+          $p = Start-Process -FilePath $exe.FullName -ArgumentList "--sans-icone", "--sans-navigateur" -PassThru
+          $etat = $null
+          foreach ($i in 1..30) {
+            Start-Sleep -Seconds 1
+            try { $etat = Invoke-RestMethod "http://127.0.0.1:8765/api/etat" -TimeoutSec 2; break } catch { }
+          }
+          Stop-Process -Id $p.Id -Force
+          if (-not $etat) { throw "L'appli ne répond pas." }
+          if ($etat.version -ne $env:VERSION) { throw "L'appli annonce $($etat.version) au lieu de $env:VERSION." }
+
+      - name: Créer l'installateur
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = (Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" | Select-Object -First 1).FullName
+          & $iscc "/DVersion=$env:VERSION" installateur.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup a échoué" }
+
+      - name: Publier la Release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Les notes sont la section de cette version dans CHANGELOG.md
+          $notes = ((Get-Content CHANGELOG.md -Raw -Encoding utf8) -split '(?m)^## ')[1] -replace '^.*\r?\n', ''
+          $notes.Trim() | Out-File notes.md -Encoding utf8
+          gh release create "${{ github.ref_name }}" "build/sortie/Forever-Addons-Manager-Setup.exe" --title "Forever Addons Manager $env:VERSION" --notes-file notes.md --verify-tag

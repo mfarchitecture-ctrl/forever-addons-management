@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forever Addons Manager</title>
+<!-- « ?i=… » : Edge garde l'icône en cache par adresse ; on change le numéro quand l'icône change -->
+<link rel="manifest" href="/manifest.webmanifest?i=3">
+<link rel="icon" type="image/png" sizes="512x512" href="/icone-512.png?i=3">
+<link rel="icon" type="image/png" sizes="256x256" href="/icone.png?i=3">
+<link rel="icon" type="image/svg+xml" href="/icone.svg?i=3">
+<meta name="theme-color" content="#0f0d0a">
+<style>
+  @font-face { font-family: "Barlow Condensed"; src: url("/polices/BarlowCondensed.ttf"); font-display: swap; }
+  :root {
+    --fond: #0f0d0a; --surface: #17140f; --surface-2: #1d1913; --survol: #221d16; --ligne: #2e271d; --ligne-forte: #4a3c2a;
+    --texte: #ece4d6; --doux: #a3967f; --tres-doux: #6f6555; --or: #d9b46a; --or-clair: #f0d79f; --or-fonce: #a8843f;
+    --vert: #8fcf7a; --bleu: #8fb7e6; --violet: #c2a6ec; --rouge: #e0806e;
+    --titre: "Barlow Condensed", "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { color-scheme: dark; }
+  body { margin: 0; background: var(--fond); color: var(--texte); font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  a { color: var(--or); }
+  img { display: block; }
+
+  /* --- En-tête ------------------------------------------------------------ */
+  header { position: sticky; top: 0; z-index: 10; background: var(--fond); }
+  .tete { display: flex; align-items: center; gap: 14px; padding: 22px 36px 0; }
+  .tete > img { width: 40px; height: 40px; flex: none; }
+  .titre-appli { min-width: 0; flex: 1 1 auto; }
+  .titre-appli .sous > * { flex: none; }
+  .titre-appli .sous > #chemin { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .tete .droite { flex: none; }
+  .titre-appli h1 { margin: 0; font-family: var(--titre); font-weight: 500; font-size: 26px; line-height: 1.05; color: var(--or-clair); white-space: nowrap; }
+  .titre-appli .sous { display: flex; align-items: center; gap: 8px; color: var(--tres-doux); font-size: 12.5px; margin-top: 3px; white-space: nowrap; }
+  .version { background: none; border: 1px solid var(--ligne); border-radius: 4px; color: var(--doux); font-size: 11.5px; padding: 0 6px; cursor: pointer; }
+  .version:hover { color: var(--or); border-color: var(--or-fonce); }
+  .tete .droite { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .champ { height: 34px; width: 230px; padding: 0 11px; border: 1px solid var(--ligne); border-radius: 5px; background: var(--surface); outline: none; }
+  .champ:focus { border-color: var(--or-fonce); }
+  .champ::placeholder { color: var(--tres-doux); }
+  .btn { height: 34px; padding: 0 14px; border: 1px solid var(--ligne); border-radius: 5px; background: var(--surface); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 7px; }
+  .btn:hover { border-color: var(--ligne-forte); background: var(--surface-2); }
+  .btn:disabled { opacity: .55; cursor: progress; }
+  .btn.or { background: var(--or); border-color: var(--or); color: #1d150a; font-weight: 600; }
+  .btn.or:hover { background: var(--or-clair); }
+  .btn.petit { height: 28px; padding: 0 11px; font-size: 13px; }
+  .btn.icone { width: 34px; padding: 0; justify-content: center; }
+  .bascule { display: inline-flex; align-items: center; gap: 8px; color: var(--doux); font-size: 13px; cursor: pointer; user-select: none; padding: 0 6px; }
+  .bascule i { width: 30px; height: 17px; border-radius: 999px; background: #2b261e; position: relative; }
+  .bascule i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #8a7f6d; transition: transform .15s; }
+  body.compact .bascule i { background: var(--or-fonce); }
+  body.compact .bascule i::after { transform: translateX(13px); background: #f4e3bb; }
+
+  .recherche { display: flex; align-items: center; gap: 10px; margin: 18px 36px 0; padding: 0 6px 0 14px; height: 50px;
+                background: var(--surface); border: 1px solid var(--ligne-forte); border-radius: 7px; }
+  .recherche:focus-within { border-color: var(--or-fonce); }
+  .recherche svg { width: 19px; height: 19px; color: var(--or); flex: none; }
+  .recherche input { flex: 1; min-width: 0; height: 100%; background: none; border: 0; outline: none; font-size: 15.5px; }
+  .recherche input::placeholder { color: var(--tres-doux); }
+  .recherche .btn { height: 38px; }
+  .en-ligne { margin-bottom: 26px; }
+  .en-ligne h2 { margin-top: 4px; display: flex; align-items: baseline; gap: 10px; }
+  .en-ligne h2 small { font-family: "Segoe UI", sans-serif; font-size: 12.5px; color: var(--tres-doux); }
+  .en-ligne .fermer { margin-left: auto; font-family: "Segoe UI", sans-serif; font-size: 13px; background: none; border: 0; color: var(--doux); cursor: pointer; }
+  .message { padding: 14px 16px; background: var(--surface); border: 1px solid var(--ligne); border-radius: 6px; color: var(--doux); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .message b { color: var(--texte); }
+  .message .btn { margin-left: auto; }
+  .resultat .cat .forever { color: var(--vert); }
+  .resultat .cat .pas-forever { color: var(--rouge); }
+  .version-pied { background: none; border: 0; color: var(--tres-doux); font-size: 12px; cursor: pointer; padding: 0 0 0 6px; white-space: nowrap; }
+  .version-pied:hover { color: var(--or); }
+  .carte, .rang { user-select: none; }
+  .onglets { display: flex; flex-wrap: wrap; gap: 8px 26px; margin: 18px 36px 0; border-bottom: 1px solid var(--ligne); }
+  .onglets button { background: none; border: 0; padding: 0 0 11px; color: var(--doux); font-family: var(--titre); font-size: 17px; cursor: pointer; position: relative; white-space: nowrap; }
+  .onglets button:hover { color: var(--texte); }
+  .onglets button[aria-selected="true"] { color: var(--or-clair); }
+  .onglets button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--or); }
+  .onglets .n { margin-left: 5px; font-family: "Segoe UI", sans-serif; font-size: 12px; color: var(--tres-doux); }
+  .onglets .n.maj { color: var(--or); font-weight: 600; }
+
+  main { padding: 18px 36px 40px; }
+  .avis { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 18px; border-left: 3px solid var(--or); background: var(--surface); border-radius: 0 5px 5px 0; }
+  .avis b { color: var(--or); font-weight: 600; }
+  .avis .btn { margin-left: auto; }
+  .avis .btn.avis-premier + .btn { margin-left: 0; }
+  .alerte { padding: 10px 14px; margin-bottom: 18px; border-left: 3px solid var(--rouge); background: var(--surface); }
+  h2 { font-family: var(--titre); font-weight: 500; font-size: 19px; color: var(--doux); margin: 30px 0 12px; }
+  .vide { color: var(--tres-doux); text-align: center; padding: 60px 0; }
+
+  /* --- Cartes -------------------------------------------------------------- */
+  .grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 16px; }
+  .carte { background: var(--surface); border: 1px solid var(--ligne); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; min-width: 0; }
+  .carte:hover { border-color: var(--ligne-forte); background: var(--surface-2); }
+  .absent > * { opacity: .5; transition: opacity .12s; }
+  .absent .logo { filter: grayscale(1); }
+  .absent:hover > * { opacity: 1; }
+  .absent:hover .logo { filter: none; }
+  .carte .haut { display: flex; gap: 13px; align-items: center; min-width: 0; }
+  .logo { width: 62px; height: 62px; border-radius: 5px; flex: none; object-fit: cover; background: #241f18; }
+  .logo-txt { display: grid; place-items: center; font-weight: 700; color: #fff; font-size: 16px; }
+  .carte h3 { margin: 0; font-family: var(--titre); font-weight: 500; font-size: 20px; line-height: 1.1; color: var(--texte); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .carte .titres { min-width: 0; flex: 1; }
+  .carte .cat { font-size: 13px; color: var(--doux); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pastilles { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .pastille { background: none; border: 1px solid currentColor; border-radius: 999px; padding: 0 8px; font-size: 11.5px; line-height: 18px; text-decoration: none; }
+  button.pastille { cursor: pointer; }
+  button.pastille:hover { background: var(--survol); }
+  .carte p { margin: 0; font-size: 13px; color: #c7bcaa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 38px; }
+  .carte .pied { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 11px; border-top: 1px solid var(--ligne); font-size: 13px; color: var(--doux); min-height: 40px; }
+  .carte .pied .droite { margin-left: auto; display: flex; align-items: center; gap: 4px; flex: none; }
+  .etat-ligne { display: inline-flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .etat-ligne .sep { color: var(--tres-doux); }
+  .doux { color: var(--tres-doux); }
+  .points { width: 28px; height: 28px; border: 0; border-radius: 5px; background: none; color: var(--tres-doux); cursor: pointer; font-size: 17px; line-height: 1; }
+  .points:hover { background: var(--survol); color: var(--texte); }
+
+  .st-a_tester { color: var(--bleu); } .st-valide { color: var(--vert); }
+  .st-rejete { color: var(--tres-doux); text-decoration: line-through; } .st-perso { color: var(--violet); }
+  .ok { color: var(--vert); } .err { color: var(--rouge); } .attention { color: var(--or); }
+  .ver b { color: var(--or); font-weight: 600; }
+
+  /* --- Mode compact : tableau --------------------------------------------- */
+  .tableau { display: none; }
+  body.compact .grille { display: none; }
+  body.compact .tableau { display: block; }
+  .rang, .rang-tete { display: grid; grid-template-columns: 24px minmax(0, 1fr) 90px 190px 124px 34px; column-gap: 14px; align-items: center; padding: 0 12px; }
+  .rang-tete { height: 32px; font-size: 12px; color: var(--tres-doux); border-bottom: 1px solid var(--ligne); }
+  .rang { height: 42px; border-bottom: 1px solid #1c1813; cursor: pointer; }
+  .rang:hover { background: var(--survol); }
+  .rang .logo { width: 22px; height: 22px; border-radius: 4px; font-size: 9px; }
+  .rang .nom { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .rang .nom b { font-weight: 600; white-space: nowrap; flex: none; }
+  .rang .nom span { color: var(--tres-doux); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rang .ver { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; color: var(--doux); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rang .etat-ligne { font-size: 13px; }
+  .rang .etat { text-align: right; font-size: 13px; }
+  .rang .progres { width: 100%; }
+  .rang .nom .note-texte { color: var(--or); }
+
+  /* --- Menus flottants ----------------------------------------------------- */
+  .menu { position: fixed; z-index: 40; min-width: 220px; padding: 5px; background: #1f1a14; border: 1px solid var(--ligne-forte); border-radius: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.55); }
+  .menu button { display: flex; width: 100%; align-items: center; gap: 8px; text-align: left; background: none; border: 0; padding: 7px 10px; border-radius: 4px; cursor: pointer; }
+  .menu button:hover { background: var(--survol); }
+  .menu button.actif::before { content: "✓"; color: var(--or); width: 12px; }
+  .menu button.inactif::before { content: ""; width: 12px; }
+  .menu hr { border: 0; border-top: 1px solid var(--ligne); margin: 5px 2px; }
+  .menu .etiquette { padding: 6px 10px 3px; font-size: 12px; color: var(--tres-doux); }
+  .menu .danger { color: var(--rouge); }
+
+  /* --- Fenêtres (dialog) ---------------------------------------------------- */
+  dialog { background: var(--surface); color: var(--texte); border: 1px solid var(--ligne-forte); border-radius: 8px; padding: 0; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 40px); }
+  dialog::backdrop { background: rgba(5,4,3,.65); }
+  dialog form { padding: 22px 24px; display: grid; gap: 13px; }
+  dialog h3 { margin: 0 0 2px; font-family: var(--titre); font-weight: 500; font-size: 23px; color: var(--or-clair); }
+  label { display: grid; gap: 5px; font-size: 12.5px; color: var(--doux); }
+  label input, label select, label textarea { background: var(--fond); border: 1px solid var(--ligne); border-radius: 5px; padding: 8px 10px; color: var(--texte); font-size: 14px; outline: none; }
+  label input:focus, label select:focus, label textarea:focus { border-color: var(--or-fonce); }
+  textarea { resize: vertical; }
+  label.case { display: flex; align-items: center; gap: 8px; color: var(--texte); font-size: 13.5px; cursor: pointer; }
+  label.case input { accent-color: var(--or); width: 16px; height: 16px; }
+  .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+  .pied-fenetre { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+  .aide { margin: 0; font-size: 13px; color: var(--doux); }
+  .fiche-tete { display: flex; gap: 14px; align-items: center; }
+  .fiche-tete .logo { width: 64px; height: 64px; }
+  .fiche-infos { display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px; font-size: 13.5px; }
+  .fiche-infos dt { color: var(--tres-doux); }
+  .fiche-infos dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .fiche-infos code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; color: var(--doux); }
+  .journal { max-height: min(60vh, 520px); overflow: auto; }
+  .journal h4 { margin: 16px 0 6px; font-family: var(--titre); font-weight: 500; font-size: 19px; color: var(--or); }
+  .journal h4 small { font-family: "Segoe UI", sans-serif; font-size: 12.5px; color: var(--tres-doux); margin-left: 8px; }
+  .journal ul { margin: 0; padding-left: 18px; color: #d2c8b6; }
+  .journal li { margin: 4px 0; }
+
+  #depot { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; background: rgba(15,13,10,.88); border: 2px dashed var(--or); font-family: var(--titre); font-size: 26px; color: var(--or-clair); }
+  #depot.actif { display: grid; }
+  #toasts { position: fixed; right: 20px; bottom: 20px; z-index: 70; display: grid; gap: 8px; max-width: min(420px, calc(100vw - 40px)); }
+  .toast { background: #211c15; border: 1px solid var(--ligne-forte); border-left: 3px solid var(--vert); border-radius: 5px; padding: 10px 14px; white-space: pre-wrap; box-shadow: 0 10px 24px rgba(0,0,0,.5); }
+  .toast.erreur { border-left-color: var(--rouge); }
+  .toast.info { border-left-color: var(--or); }
+
+  /* Barre de progression d'une installation */
+  .progres { position: relative; display: inline-block; width: 160px; height: 26px; border: 1px solid var(--ligne-forte); border-radius: 5px; overflow: hidden; background: var(--fond); vertical-align: middle; }
+  .progres i { position: absolute; inset: 0 auto 0 0; background: var(--or-fonce); opacity: .55; transition: width .25s; }
+  .progres span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--texte); }
+
+  /* Filtres par genre et tri */
+  .filtres { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 16px; }
+  #b-filtre svg { width: 14px; height: 14px; }
+  .genre-actif { color: var(--or-clair); border-color: var(--or-fonce); }
+  label.tri { display: flex; flex-direction: row; align-items: center; gap: 7px; margin-left: auto; font-size: 13px; color: var(--tres-doux); }
+  label.tri select { padding: 4px 8px; font-size: 13px; }
+
+  /* Barre de défilement aux couleurs de l'appli */
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: var(--fond); }
+  ::-webkit-scrollbar-thumb { background: #3b3226; border-radius: 6px; border: 3px solid var(--fond); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--or-fonce); }
+  ::-webkit-scrollbar-button { display: none; }
+  ::-webkit-scrollbar-corner { background: var(--fond); }
+
+  /* Info-bulles */
+  [data-info] { position: relative; }
+  [data-info]::after { content: attr(data-info); position: absolute; top: calc(100% + 7px); right: 0; z-index: 30; padding: 5px 9px;
+    background: #2a2419; border: 1px solid var(--ligne-forte); border-radius: 4px; color: var(--texte); font: 400 12.5px "Segoe UI", sans-serif;
+    white-space: nowrap; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .12s .35s, visibility 0s .35s; }
+  [data-info]:hover::after, [data-info]:focus-visible::after { opacity: 1; visibility: visible; }
+  .info-gauche::after { right: auto; left: 0; }
+
+  /* Notes */
+  .note-zone { display: flex; align-items: center; gap: 7px; width: 100%; min-width: 0; padding: 5px 7px; margin: 0 -7px; box-sizing: content-box; background: none; border: 0; border-radius: 5px; color: var(--tres-doux); font-size: 12.5px; text-align: left; cursor: text; }
+  .note-zone:hover { background: var(--survol); color: var(--doux); }
+  .note-zone.pleine { color: var(--or); }
+  .note-zone svg { width: 13px; height: 13px; flex: none; pointer-events: none; }
+  .note-zone span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .note-champ { width: 100%; background: var(--fond); border: 1px solid var(--or-fonce); border-radius: 5px; padding: 6px 8px; font-size: 13px; outline: none; resize: none; }
+  .rang-fin { display: flex; justify-content: flex-end; }
+
+  /* Fiche */
+  .fiche-ligne { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13.5px; color: var(--doux); }
+  .fiche-desc { margin: 0; font-size: 14px; color: #c7bcaa; line-height: 1.45; }
+  .fiche-statut { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--ligne); border-radius: 6px; overflow: hidden; }
+  .fiche-statut button { background: none; border: 0; border-left: 1px solid var(--ligne); padding: 7px 8px; font-size: 13.5px; color: var(--tres-doux); text-decoration: none; cursor: pointer; }
+  .fiche-statut button:first-child { border-left: 0; }
+  .fiche-statut button:hover { background: var(--survol); }
+  .fiche-statut button.st-a_tester[aria-pressed="true"] { color: var(--bleu); }
+  .fiche-statut button.st-valide[aria-pressed="true"] { color: var(--vert); }
+  .fiche-statut button.st-rejete[aria-pressed="true"] { color: var(--texte); }
+  .fiche-statut button[aria-pressed="true"] { background: var(--surface-2); font-weight: 600; }
+  .fiche-note { display: grid; gap: 5px; }
+  .fiche-note-tete { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; color: var(--doux); }
+  .fiche-note textarea { background: var(--fond); border: 1px solid var(--ligne); border-radius: 5px; padding: 8px 10px; color: var(--texte); font-size: 14px; outline: none; font-family: inherit; }
+  .fiche-note textarea:focus { border-color: var(--or-fonce); }
+  .fiche-details summary { cursor: pointer; color: var(--doux); font-size: 13px; }
+  .fiche-details[open] summary { margin-bottom: 10px; }
+  .note-etat { font-size: 12px; color: var(--tres-doux); min-height: 16px; }
+  .choix { display: grid; gap: 8px; }
+  .choix button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; background: none; border: 1px solid var(--ligne-forte); border-radius: 6px; cursor: pointer; }
+  .choix button:hover { background: var(--survol); border-color: var(--or-fonce); }
+  .choix b { font-weight: 600; font-size: 14.5px; color: var(--texte); }
+  .choix .danger b { color: var(--rouge); }
+  .choix span { font-size: 12.5px; color: var(--doux); }
+  .btn.discret { background: none; border-color: transparent; color: var(--doux); }
+  .btn.discret:hover { color: var(--rouge); background: none; border-color: transparent; }
+
+  /* Ajouter un addon */
+  .ajout-recherche { display: flex; gap: 8px; }
+  .ajout-recherche input { flex: 1; min-width: 0; background: var(--fond); border: 1px solid var(--ligne); border-radius: 5px; padding: 8px 10px; outline: none; }
+  .ajout-recherche input:focus { border-color: var(--or-fonce); }
+  .ajout-autres { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ajout-autres .btn { justify-content: center; height: 40px; }
+  .ou { text-align: center; color: var(--tres-doux); font-size: 12.5px; }
+
+  @media (max-width: 860px) {
+    .tete { flex-wrap: wrap; padding: 16px 16px 0; }
+    .tete .droite { margin-left: 0; width: 100%; flex-wrap: wrap; }
+    .champ { flex: 1; width: auto; }
+    .onglets { margin: 14px 16px 0; }
+    main { padding: 16px; }
+    .rang, .rang-tete { grid-template-columns: 24px minmax(0, 1fr) 110px 60px; }
+    .rang > :nth-child(3), .rang > :nth-child(4), .rang-tete > :nth-child(3), .rang-tete > :nth-child(4) { display: none; }
+    .deux { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="tete">
+    <img src="/icone.svg?i=3" alt="">
+    <div class="titre-appli">
+      <h1>Forever Addons Manager</h1>
+      <div class="sous"><span id="chemin">…</span><button class="version info-gauche" id="b-jeu" data-info="Choisir le dossier de WoW Forever">Analyser</button></div>
+    </div>
+    <div class="droite">
+      <label class="bascule" data-info="Afficher en tableau"><i></i>Compact</label>
+      <button class="btn" id="b-verifier" data-info="Cherche les mises à jour de tes addons">Vérifier les mises à jour</button>
+      <button class="btn" id="b-ajouter" data-info="Ajouter un addon">+ Ajouter un addon</button>
+      <button class="btn icone" id="b-reglages" data-info="Réglages">⚙</button>
+      <button class="version-pied" id="b-version" data-info="Nouveautés">v…</button>
+    </div>
+  </div>
+  <form class="recherche" id="f-recherche" autocomplete="off">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="5.5"/><path d="m13 13 4 4"/></svg>
+    <input id="recherche" type="search" placeholder="Un addon dont tu as entendu parler ? Son nom ou son Project ID CurseForge, puis Entrée">
+    <button class="btn or" type="submit">Chercher</button>
+  </form>
+  <nav class="onglets" id="onglets" role="tablist"></nav>
+</header>
+
+
+<main id="contenu"><p class="vide">Chargement…</p></main>
+
+<dialog id="d-fiche"><form method="dialog" id="f-fiche"></form></dialog>
+
+<dialog id="d-retirer"><form method="dialog">
+  <h3></h3>
+  <div class="choix"></div>
+  <div class="pied-fenetre"><button class="btn">Annuler</button></div>
+</form></dialog>
+
+<dialog id="d-edition">
+  <form method="dialog" id="f-edition">
+    <h3 id="e-titre">Modifier</h3>
+    <div class="deux">
+      <label>Nom <input name="nom" required></label>
+      <label>Statut <select name="statut"></select></label>
+    </div>
+    <div class="deux">
+      <label>Genre <select name="categorie"></select></label>
+      <label>Identifiant <input name="id" placeholder="automatique"></label>
+    </div>
+    <label class="case"><input type="checkbox" name="perso"> C'est une de mes créations</label>
+    <label>Ce qu'il fait <textarea name="description" rows="2"></textarea></label>
+    <label>Mes notes (tests, avis, réglages) <textarea name="notes" rows="3"></textarea></label>
+    <div class="deux">
+      <label>Source <select name="type"></select></label>
+      <label>Canal <select name="canal"><option value="release">Version stable</option><option value="beta">Bêta</option><option value="alpha">Alpha</option></select></label>
+    </div>
+    <div class="deux">
+      <label id="l-projet">ID du projet CurseForge <input name="projet" inputmode="numeric"></label>
+      <label id="l-motif">Motif du fichier (GitHub) <input name="motif" placeholder="ex. forever"></label>
+    </div>
+    <label id="l-url">Lien ou dossier <input name="url" placeholder="https://… ou C:\…"></label>
+    <label>Dossiers dans AddOns (un par ligne) <textarea name="dossiers" rows="3" style="font-family:Consolas,monospace;font-size:12.5px"></textarea></label>
+    <div class="pied-fenetre">
+      <button class="btn" type="button" data-fermer>Annuler</button>
+      <button class="btn or" value="ok">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="d-ajouter">
+  <form method="dialog" id="f-ajouter">
+    <h3>Ajouter un addon</h3>
+    <p class="aide">Son nom, ou son Project ID (encadré « About Project » sur sa page CurseForge).</p>
+    <div class="ajout-recherche">
+      <input name="texte" id="aj-texte" autocomplete="off" placeholder="Nom de l'addon ou Project ID">
+      <button class="btn or" value="ok">Chercher</button>
+    </div>
+    <div class="ou">ou</div>
+    <div class="ajout-autres">
+      <button class="btn" type="button" id="aj-zip">Installer un fichier .zip</button>
+      <button class="btn" type="button" id="aj-creation">Lier un addon que je développe</button>
+    </div>
+    <div class="pied-fenetre"><button class="btn" type="button" data-fermer>Fermer</button></div>
+  </form>
+</dialog>
+
+<dialog id="d-changelog">
+  <form method="dialog">
+    <h3>Nouveautés</h3>
+    <div class="journal" id="journal"></div>
+    <div class="pied-fenetre"><button class="btn or" value="ok">Fermer</button></div>
+  </form>
+</dialog>
+
+<input type="file" id="i-zip" accept=".zip" hidden>
+<div id="depot">Lâche le .zip pour l'installer</div>
+<div id="toasts"></div>
+
+<script>
+const LIBELLES = { a_tester: "À tester", valide: "Validé", rejete: "Rejeté" };
+const SOURCES = { curseforge: "CurseForge", github: "GitHub", page: "Page web", local: "Dossier local (perso)", aucune: "Aucune" };
+const NOM = "Forever Addons Manager";
+const GENRES = ["Interface", "Quêtes", "Carte", "Combat", "Métiers", "Récolte", "Hôtel des ventes", "Sacs", "Confort", "Leveling", "Guilde", "Autre"];
+const genreDe = a => GENRES.includes(a.categorie) ? a.categorie : "Autre";
+const ONGLETS = [
+  ["installes", "Installés"], ["a_tester", "À tester"], ["valide", "Validés"], ["perso", "Mes créations"],
+  ["collection", "Toute la collection"], ["maj", "Mises à jour"], ["inconnus", "Non répertoriés"],
+];
+let ETAT = null;
+let onglet = ONGLETS.some(([k]) => k === lireLocal("onglet")) ? lireLocal("onglet") : "installes";
+let genre = null;        // filtre par genre (null = tous)
+let tri = lireLocal("tri") || "nom";
+let sens = lireLocal("sens") === "desc" ? "desc" : "asc";    // asc = A → Z, ou ancien d'abord
+let PROGRES = {};        // installations en cours : [id] = { etape, pourcent, mo }
+let enLigne = null;      // recherche CurseForge : { texte, cible, resultats | erreur }
+let recherche = "";
+let enEdition = null;
+
+function lireLocal(k) { try { return localStorage.getItem("hamax-" + k); } catch { return null; } }
+function ecrireLocal(k, v) { try { localStorage.setItem("hamax-" + k, v); } catch {} }
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+if (lireLocal("compact") === "1" || location.hash === "#compact") document.body.classList.add("compact");
+document.querySelector(".bascule").onclick = () => {
+  document.body.classList.toggle("compact");
+  ecrireLocal("compact", document.body.classList.contains("compact") ? "1" : "0");
+};
+
+async function api(chemin, corps, zip) {
+  const opts = corps === undefined ? {} : {
+    method: "POST",
+    headers: { "X-Hamax": "1", "Content-Type": zip ? "application/zip" : "application/json" },
+    body: zip ? corps : JSON.stringify(corps),
+  };
+  const r = await fetch(chemin, opts);
+  const d = await r.json().catch(() => ({ erreur: "Réponse illisible du serveur" }));
+  if (!r.ok) throw new Error(d.erreur || ("Erreur " + r.status));
+  return d;
+}
+
+function toast(texte, type = "ok", duree = 5000) {
+  const el = document.createElement("div");
+  el.className = "toast " + (type === "ok" ? "" : type);
+  el.textContent = texte;
+  document.getElementById("toasts").append(el);
+  setTimeout(() => el.remove(), type === "erreur" ? duree * 2 : duree);
+}
+
+async function occupe(bouton, fn) {
+  const avant = bouton?.textContent;
+  if (bouton) { bouton.disabled = true; bouton.textContent = "…"; }
+  try { return await fn(); }
+  catch (e) { toast(e.message, "erreur"); }
+  finally { if (bouton) { bouton.disabled = false; bouton.textContent = avant; } }
+}
+
+async function charger() {
+  try { ETAT = await api("/api/etat"); for (const ev of ETAT.evenements || []) toast(ev.texte, ev.type === "erreur" ? "erreur" : "ok"); }
+  catch (e) { document.getElementById("contenu").innerHTML = `<p class="vide">L'appli ne répond pas : ${esc(e.message)}</p>`; return; }
+  rendre();
+}
+
+// --- Données dérivées -------------------------------------------------------------
+const aMaj = a => a.installe && a.maj && a.maj.dispo === true;
+const distant = a => ["curseforge", "github"].includes(a.source?.type);
+const description = a => a.description || a.info?.notes || "";
+
+function lienSource(a) {
+  const s = a.source || {};
+  if (s.type === "curseforge") return s.url || (s.projet ? `https://www.curseforge.com/projects/${s.projet}` : "");
+  if (s.type === "github" || s.type === "page") return s.url;
+  return "";
+}
+
+// Logo CurseForge, sinon pastille avec les initiales (couleur stable tirée du nom)
+function logo(a) {
+  if (a.logo) return `<img class="logo" src="${esc(a.logo)}" alt="" loading="lazy">`;
+  let h = 0;
+  for (const c of a.nom) h = (h * 31 + c.charCodeAt(0)) % 360;
+  const init = a.nom.split(/[\s_-]+/).filter(Boolean).map(m => m[0]).join("").slice(0, 2).toUpperCase();
+  return `<div class="logo logo-txt" style="background:hsl(${h} 38% 34%)">${esc(init)}</div>`;
+}
+
+// « Lueur-1.4.0.zip », « v1.4.10-forever » -> « 1.4.0 », « 1.4.10 » (nom de fichier CurseForge -> numéro)
+const numero = v => (String(v || "").match(/\d+(?:\.\d+)+[a-z]?|\d+/) || [v || ""])[0];
+
+// Version affichée + état / action à droite
+function version(a) {
+  const v = a.info?.version;
+  if (aMaj(a)) return `${esc(v || "?")} → <b>${esc(numero(a.maj.version))}</b>`;
+  if (!a.installe) return a.maj?.version && !a.maj.erreur ? `dispo ${esc(numero(a.maj.version))}` : "";
+  return esc(v || "");
+}
+
+function texteProgres(p) {
+  if (p.etape === "attente") return "En attente…";
+  if (p.etape === "installation") return "Installation…";
+  return p.pourcent === null ? `Téléchargement ${String(p.mo).replace(".", ",")} Mo` : `Téléchargement ${p.pourcent} %`;
+}
+const barreProgres = (id, p) => `<span class="progres" data-progres="${esc(id)}"><i style="width:${p.pourcent ?? 0}%"></i><span>${texteProgres(p)}</span></span>`;
+
+// Le bouton d'action d'un addon, ou la barre s'il s'installe
+function actionAddon(a) {
+  const cls = "btn petit";
+  if (PROGRES[a.id]) return barreProgres(a.id, PROGRES[a.id]);
+  if (!a.installe && !a.perso && !(distant(a) && a.source?.projet)) return `<button class="${cls}" data-act="chercher">Chercher</button>`;
+  if (aMaj(a)) return `<button class="${cls} or" data-act="installer">Mettre à jour</button>`;
+  if (!a.installe && a.source?.type === "local") return `<button class="${cls}" data-act="lier">Installer</button>`;
+  if (!a.installe && distant(a)) return `<button class="${cls} or" data-act="installer">Installer</button>`;
+  return "";
+}
+
+// Où en est l'addon, affiché à côté de son numéro de version
+function etat(a) {
+  if (PROGRES[a.id] || aMaj(a)) return "";
+  if (!a.installe) return `<span class="doux">Pas installé</span>`;
+  if (a.maj?.erreur) return `<span class="err" title="${esc(a.maj.erreur)}">Vérif. impossible</span>`;
+  if (a.incompatibles?.length) return `<span class="attention" title="Pas de fichier .toc pour WoW Forever : ${esc(a.incompatibles.join(", "))}">⚠ Pas fait pour Forever</span>`;
+  if (distant(a)) return a.maj ? `<span class="ok">À jour</span>` : `<span class="doux">Non vérifié</span>`;
+  return `<span class="ok">Installé</span>`;
+}
+
+const ligneVersion = a => [version(a) && `<span class="ver">${version(a)}</span>`, etat(a)].filter(Boolean).join(`<span class="sep">·</span>`);
+
+function correspond(a) {
+  if (onglet === "maj" && !aMaj(a)) return false;
+  if (onglet === "installes" && !a.installe) return false;
+  if (onglet === "perso" && !a.perso) return false;
+  if (["a_tester", "valide"].includes(onglet) && a.statut !== onglet) return false;
+  if (!recherche) return true;
+  return [a.nom, a.categorie, description(a), a.notes, ...(a.dossiers || [])].join(" ").toLowerCase().includes(recherche);
+}
+
+// --- Rendu ---------------------------------------------------------------------
+function rendreOnglets() {
+  const compte = {
+    installes: ETAT.addons.filter(a => a.installe).length,
+    collection: ETAT.addons.length,
+    maj: ETAT.addons.filter(aMaj).length,
+    inconnus: ETAT.inconnus.length,
+  };
+  for (const s of ETAT.statuts) compte[s] = ETAT.addons.filter(a => a.statut === s).length;
+  compte.perso = ETAT.addons.filter(a => a.perso).length;
+  const el = document.getElementById("onglets");
+  el.innerHTML = ONGLETS
+    .filter(([k]) => !(["inconnus", "maj"].includes(k) && !compte[k]))
+    .map(([k, l]) => `<button role="tab" data-o="${k}" aria-selected="${onglet === k}">${l}<span class="n ${k === "maj" && compte.maj ? "maj" : ""}">${compte[k] ?? 0}</span></button>`).join("");
+  el.querySelectorAll("button").forEach(b => b.onclick = () => { onglet = b.dataset.o; ecrireLocal("onglet", onglet); rendre(); });
+}
+
+const STYLO = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 16.5l.8-3.6L13.6 4a1.6 1.6 0 0 1 2.3 0l.4.4a1.6 1.6 0 0 1 0 2.3l-8.9 8.9z"/></svg>`;
+
+function carte(a) {
+  return `<article class="carte ${a.installe ? "" : "absent"}" data-id="${esc(a.id)}">
+    <div class="haut">${logo(a)}<div class="titres">
+      <h3>${esc(a.nom)}</h3>
+      <div class="cat">${esc(genreDe(a))}</div>
+      <div class="pastilles"><button class="pastille st-${a.statut}" data-act="statut" title="Changer le statut">${LIBELLES[a.statut]}</button>${a.perso ? `<span class="pastille st-perso">Ma création</span>` : ""}</div>
+    </div></div>
+    <p>${esc(description(a)) || `<span class="doux">Pas de description.</span>`}</p>
+    <button class="note-zone ${a.notes ? "pleine" : ""}" data-act="note">${STYLO}<span>${esc(a.notes) || "Ajouter une note"}</span></button>
+    <div class="pied"><span class="etat-ligne">${ligneVersion(a)}</span><span class="droite">${actionAddon(a)}<button class="points" data-act="menu" title="Actions">⋯</button></span></div>
+  </article>`;
+}
+
+function rang(a) {
+  return `<div class="rang ${a.installe ? "" : "absent"}" data-id="${esc(a.id)}">${logo(a)}
+    <div class="nom"><b>${esc(a.nom)}</b><span class="${a.notes ? "note-texte" : ""}">${esc(a.notes || description(a))}</span></div>
+    <span class="st-${a.statut}">${LIBELLES[a.statut]}</span>
+    <span class="etat-ligne">${ligneVersion(a)}</span>
+    <span class="etat">${actionAddon(a)}</span>
+    <span class="rang-fin"><button class="points" data-act="menu" title="Actions">⋯</button></span>
+  </div>`;
+}
+
+function carteInconnue(g) {
+  const a = { nom: g.info.titre || g.dossier };
+  return `<article class="carte" data-inconnu="${esc(g.dossier)}">
+    <div class="haut">${logo(a)}<div style="min-width:0"><h3>${esc(a.nom)}</h3><div class="cat">${esc(g.dossiers.length > 1 ? g.dossiers.length + " dossiers" : g.dossier)}</div></div></div>
+    <p>${esc(g.info.notes || "")}</p>
+    <div class="pied"><span class="ver">${esc(g.info.version || "")}</span><span class="droite"><button class="btn petit or" data-act="ajouter-inconnu">Ajouter au registre</button></span></div>
+  </article>`;
+}
+
+function rendre() {
+  document.getElementById("chemin").textContent = ETAT.dossier_ok ? ETAT.config.dossier_addons : "Jeu pas encore trouvé";
+  document.getElementById("b-jeu").textContent = ETAT.jeu_confirme && ETAT.dossier_ok ? "Localiser" : "Analyser";
+  document.getElementById("b-version").textContent = "v" + ETAT.version;
+  rendreOnglets();
+
+  let html = rendreEnLigne();
+  if (!ETAT.dossier_ok) html += `<div class="alerte">L'appli ne trouve pas WoW Forever : clique sur <b>Analyser</b> sous le titre.</div>`;
+  if (ETAT.maj_appli) {
+    html += `<div class="avis"><span><b>${NOM} ${esc(ETAT.maj_appli.version)}</b> est disponible.</span><button class="btn petit avis-premier" id="b-notes-appli">Nouveautés</button><button class="btn or petit" id="b-maj-appli">Mettre à jour l'appli</button></div>`;
+  }
+  const maj = ETAT.addons.filter(aMaj);
+  if (maj.length && onglet !== "inconnus") {
+    html += `<div class="avis"><span>${maj.length === 1 ? `<b>${esc(maj[0].nom)}</b> peut passer en ${esc(maj[0].maj.version)}` : `<b>${maj.length} mises à jour</b> : ${esc(maj.map(a => a.nom).join(", "))}`}</span><button class="btn or petit" id="b-tout">Tout mettre à jour</button></div>`;
+  }
+
+  if (onglet === "inconnus") {
+    const liste = ETAT.inconnus.filter(g => !recherche || g.dossiers.join(" ").toLowerCase().includes(recherche));
+    html += `<p class="aide" style="margin-bottom:14px">Ces dossiers sont dans AddOns mais pas dans ton registre (installés à la main ou par l'appli CurseForge).</p>`;
+    html += liste.length ? `<div class="grille" style="display:grid">${liste.map(carteInconnue).join("")}</div>` : `<p class="vide">Rien ici.</p>`;
+  } else {
+    const dansOnglet = ETAT.addons.filter(correspond);
+    const genres = GENRES.filter(g => dansOnglet.some(a => genreDe(a) === g));
+    if (!genres.includes(genre)) genre = null;
+    const dateMaj = a => a.fichier_installe?.date || "";
+    const parNom = (x, y) => x.nom.localeCompare(y.nom, "fr");
+    const ordre = {
+      nom: parNom,
+      ajout: (x, y) => (x.ajoute_le || "").localeCompare(y.ajoute_le || "") || parNom(x, y),
+      maj: (x, y) => dateMaj(x).localeCompare(dateMaj(y)) || parNom(x, y),
+      installe: (x, y) => (y.installe - x.installe) || parNom(x, y),
+    }[tri] || parNom;
+    const signe = sens === "asc" ? 1 : -1;
+    const liste = dansOnglet.filter(a => !genre || genreDe(a) === genre).sort((x, y) => (aMaj(y) - aMaj(x)) || signe * ordre(x, y));
+    const libelleSens = sens === "asc" ? "↑ Croissant" : "↓ Décroissant";
+    if (dansOnglet.length) html += `<div class="filtres">
+      <button class="btn petit" id="b-filtre"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 4h14l-5.5 6.5V16l-3-1.5v-4z"/></svg>Filtrer</button>
+      ${genre ? `<button class="btn petit genre-actif" data-genre="" title="Retirer ce filtre">${esc(genre)} ✕</button>` : ""}
+      <label class="tri">Trier par <select id="tri">
+        <option value="nom" ${tri === "nom" ? "selected" : ""}>Nom</option>
+        <option value="ajout" ${tri === "ajout" ? "selected" : ""}>Date d'ajout</option>
+        <option value="maj" ${tri === "maj" ? "selected" : ""}>Dernière mise à jour</option>
+        <option value="installe" ${tri === "installe" ? "selected" : ""}>Installé / pas installé</option>
+      </select></label>
+      <button class="btn petit" id="b-sens" title="Inverser l'ordre">${libelleSens}</button></div>`;
+    if (!liste.length) html += `<p class="vide">${recherche ? "Rien dans ta collection à ce nom : Entrée pour le chercher sur CurseForge." : onglet === "a_tester" ? "Rien à tester : tape le nom d'un addon en haut pour le noter ou l'installer." : "Rien ici pour l'instant."}</p>`;
+    else html += `<div class="grille">${liste.map(carte).join("")}</div>
+      <div class="tableau"><div class="rang-tete"><span></span><span>Addon</span><span>Statut</span><span>Version</span><span></span><span></span></div>${liste.map(rang).join("")}</div>`;
+  }
+  document.getElementById("contenu").innerHTML = html;
+  const tout = document.getElementById("b-tout");
+  if (tout) tout.onclick = e => toutMettreAJour(e.currentTarget);
+  brancherEnLigne();
+}
+
+// --- Menus flottants -------------------------------------------------------------
+let menuOuvert = null;
+function fermerMenu() { menuOuvert?.remove(); menuOuvert = null; }
+function ouvrirMenu(ancre, elements) {
+  // Re-cliquer sur le bouton qui a ouvert le menu le referme
+  if (menuOuvert?.ancre === ancre) return fermerMenu();
+  fermerMenu();
+  const m = document.createElement("div");
+  m.ancre = ancre;
+  m.className = "menu";
+  for (const e of elements) {
+    if (e === "-") { m.append(document.createElement("hr")); continue; }
+    if (e.etiquette) { const d = document.createElement("div"); d.className = "etiquette"; d.textContent = e.etiquette; m.append(d); continue; }
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = e.texte;
+    if (e.coche !== undefined) b.className = e.coche ? "actif" : "inactif";
+    if (e.danger) b.classList.add("danger");
+    b.onclick = ev => { ev.stopPropagation(); fermerMenu(); e.action(); };
+    m.append(b);
+  }
+  document.body.append(m);
+  const r = ancre.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  m.style.left = Math.max(8, Math.min(r.right - mw, innerWidth - mw - 8)) + "px";
+  m.style.top = (r.bottom + 4 + mh > innerHeight - 8 ? Math.max(8, r.top - mh - 4) : r.bottom + 4) + "px";
+  menuOuvert = m;
+}
+// Clic ailleurs = on ferme. Le clic qui vient d'ouvrir le menu remonte jusqu'ici : il ne compte pas.
+document.addEventListener("click", e => {
+  if (menuOuvert && !menuOuvert.contains(e.target) && !menuOuvert.ancre?.contains(e.target)) fermerMenu();
+});
+addEventListener("keydown", e => { if (e.key === "Escape") fermerMenu(); });
+addEventListener("resize", fermerMenu);
+document.addEventListener("scroll", fermerMenu, true);
+
+function menuStatut(a, ancre) {
+  ouvrirMenu(ancre, ETAT.statuts.map(s => ({ texte: LIBELLES[s], coche: a.statut === s, action: () => actions.statut(a, s) })));
+}
+
+function menuAddon(a, ancre) {
+  const el = [];
+  if (lienSource(a)) el.push({ texte: "Page de l'addon", action: () => window.open(lienSource(a), "_blank") });
+  if (a.installe) el.push({ texte: "Ouvrir le dossier", action: () => actions.ouvrir(a) });
+  if (el.length) el.push("-");
+  el.push({ texte: a.installe ? "Désinstaller" : `Supprimer de ${NOM}`, danger: true, action: () => actions.retirer(a) });
+  ouvrirMenu(ancre, el);
+}
+
+// --- Actions ---------------------------------------------------------------------
+const actions = {
+  ouvrir: a => occupe(null, () => api("/api/ouvrir", { id: a.id })),
+  installer: a => occupe(null, () => avecProgres([a], async () => {
+    const r = await api("/api/installer", { id: a.id });
+    toast(`${r.nom} installé.` + (r.sauvegarde ? "\nL'ancienne version est dans les sauvegardes." : ""));
+  })),
+  lier: a => occupe(null, async () => { await api("/api/lier", { id: a.id }); toast(`${a.nom} installé.`); await charger(); }),
+  statut: (a, s) => occupe(null, async () => { await api("/api/addon", { addon: { ...fiche(a), statut: s }, ancien_id: a.id }); await charger(); }),
+  // Propose de désinstaller seulement, ou de supprimer aussi la fiche
+  retirer: a => {
+    const d = document.getElementById("d-retirer");
+    const fin = async (supprimer) => {
+      d.close();
+      document.getElementById("d-fiche").close();
+      await occupe(null, async () => {
+        if (a.installe) await api("/api/retirer", { id: a.id });
+        if (supprimer) await api("/api/addon/supprimer", { id: a.id });
+        toast(supprimer ? `${a.nom} supprimé.` : `${a.nom} désinstallé.`);
+        await charger();
+      });
+    };
+    const fichiers = a.info?.lien ? "Ton dossier de développement n'est pas touché." : "Ses fichiers partent dans les sauvegardes : rien n'est effacé.";
+    d.querySelector("h3").textContent = a.installe ? `Désinstaller ${a.nom} ?` : `Supprimer ${a.nom} ?`;
+    const choix = d.querySelector(".choix");
+    choix.innerHTML = (a.installe ? `<button type="button" data-suppr=""><b>Désinstaller</b><span>Il reste dans ta collection avec tes notes. ${fichiers}</span></button>` : "") +
+      `<button type="button" data-suppr="1" class="danger"><b>${a.installe ? "Désinstaller et supprimer" : "Supprimer"} de ${NOM}</b><span>Sa fiche et tes notes disparaissent.${a.installe ? " " + fichiers : ""}</span></button>`;
+    choix.querySelectorAll("button").forEach(b => b.onclick = () => fin(!!b.dataset.suppr));
+    d.showModal();
+  },
+};
+
+// Affiche une barre sur chaque addon concerné pendant fn(), en suivant l'avancement donné par le serveur
+async function avecProgres(addons, fn) {
+  for (const a of addons) PROGRES[a.id] = { etape: "attente", pourcent: 0 };
+  rendre();
+  const suivi = setInterval(async () => {
+    const actuel = await api("/api/progression").catch(() => ({}));
+    for (const [id, p] of Object.entries(actuel)) {
+      PROGRES[id] = p;
+      const el = document.querySelector(`[data-progres="${CSS.escape(id)}"]`);
+      if (el) { el.querySelector("i").style.width = (p.pourcent ?? 0) + "%"; el.querySelector("span").textContent = texteProgres(p); }
+    }
+  }, 300);
+  try { await fn(); }
+  finally {
+    clearInterval(suivi);
+    for (const a of addons) delete PROGRES[a.id];
+    await charger();
+  }
+}
+
+async function toutMettreAJour(bouton) {
+  await occupe(bouton, () => {
+    const liste = ETAT.addons.filter(aMaj);
+    return avecProgres(liste, async () => {
+      for (const a of liste) {
+        try { await api("/api/installer", { id: a.id }); toast(`${a.nom} mis à jour.`); }
+        catch (e) { toast(`${a.nom} : ${e.message}`, "erreur"); }
+        delete PROGRES[a.id];
+        rendre();
+      }
+    });
+  });
+}
+
+function fiche(a) {
+  const { installe, dossiers_trouves, dossiers_manquants, incompatibles, info, maj, ...f } = a;
+  return f;
+}
+
+document.getElementById("contenu").addEventListener("change", ev => {
+  if (ev.target.id === "tri") {
+    tri = ev.target.value;
+    sens = ["nom", "installe"].includes(tri) ? "asc" : "desc";      // le plus utile d'abord : A → Z, installés, ou le plus récent
+    ecrireLocal("tri", tri); ecrireLocal("sens", sens);
+    rendre();
+  }
+});
+async function mettreAJourAppli(bouton) {
+  if (!confirm(`Installer ${NOM} ${ETAT.maj_appli.version} ?\nL'appli se ferme, se met à jour et se rouvre toute seule. Ta collection et tes notes sont conservées.`)) return;
+  bouton.disabled = true;
+  const suivi = setInterval(async () => {
+    const p = (await api("/api/progression").catch(() => ({}))).appli;
+    if (p) bouton.textContent = texteProgres(p);
+  }, 300);
+  try {
+    await api("/api/appli/maj", {});
+    bouton.textContent = "Installation…";
+  } catch (e) {
+    toast(e.message, "erreur");
+    bouton.disabled = false;
+    bouton.textContent = "Mettre à jour l'appli";
+  }
+  clearInterval(suivi);
+}
+
+document.getElementById("contenu").addEventListener("click", ev => {
+  if (ev.target.closest("#b-maj-appli")) return mettreAJourAppli(ev.target.closest("#b-maj-appli"));
+  if (ev.target.closest("#b-notes-appli")) {
+    document.getElementById("journal").innerHTML = markdownSimple(`## ${ETAT.maj_appli.version}\n${ETAT.maj_appli.notes}`);
+    return document.getElementById("d-changelog").showModal();
+  }
+  const choix = ev.target.closest("[data-genre]");
+  if (choix) { genre = choix.dataset.genre || null; return rendre(); }
+  if (ev.target.closest("#b-sens")) { sens = sens === "asc" ? "desc" : "asc"; ecrireLocal("sens", sens); return rendre(); }
+  const filtre = ev.target.closest("#b-filtre");
+  if (filtre) {
+    const dansOnglet = ETAT.addons.filter(correspond);
+    const choisir = g => () => { genre = g; rendre(); };
+    return ouvrirMenu(filtre, [
+      { texte: "Tous les genres", coche: !genre, action: choisir(null) },
+      "-",
+      ...GENRES.filter(g => dansOnglet.some(a => genreDe(a) === g)).map(g => ({
+        texte: `${g} (${dansOnglet.filter(a => genreDe(a) === g).length})`, coche: genre === g, action: choisir(g),
+      })),
+    ]);
+  }
+  if (ev.target.closest(".note-champ")) return;
+  const el = ev.target.closest("[data-id], [data-inconnu]");
+  if (!el) return;
+  const bouton = ev.target.closest("[data-act]");
+  if (el.dataset.inconnu) {
+    if (!bouton) return;
+    const g = ETAT.inconnus.find(x => x.dossier === el.dataset.inconnu);
+    const id = g.info.curseforge_id;
+    return ouvrirEdition(null, {
+      nom: g.info.titre || g.dossier, statut: "a_tester", description: g.info.notes || "", dossiers: g.dossiers,
+      source: id ? { type: "curseforge", projet: id, url: g.info.site || "" } : { type: g.info.site ? "page" : "aucune", url: g.info.site || "" },
+    });
+  }
+  const a = ETAT.addons.find(x => x.id === el.dataset.id);
+  if (!bouton) return ouvrirFiche(a);
+  ev.stopPropagation();
+  if (bouton.dataset.act === "menu") return menuAddon(a, bouton);
+  if (bouton.dataset.act === "statut") return menuStatut(a, bouton);
+  if (bouton.dataset.act === "note") return noteRapide(a, el);
+  if (bouton.dataset.act === "installer") return actions.installer(a, bouton);
+  if (bouton.dataset.act === "lier") return actions.lier(a);
+  if (bouton.dataset.act === "chercher") return chercherEnLigne(a.nom, a.id);
+});
+
+// --- Notes ---------------------------------------------------------------------------------
+async function enregistrerNote(a, notes) {
+  a.notes = notes;
+  await api("/api/addon", { addon: { ...fiche(a), notes }, ancien_id: a.id });
+}
+
+// Sur la carte, sans ouvrir la fiche : Entrée enregistre, Maj+Entrée va à la ligne, Échap annule
+function noteRapide(a, carteEl) {
+  if (carteEl.querySelector(".note-champ")) return;
+  const champ = document.createElement("textarea");
+  champ.className = "note-champ";
+  champ.rows = 2;
+  champ.value = a.notes || "";
+  champ.placeholder = "Ta note… Entrée pour enregistrer";
+  carteEl.querySelector(".note-zone").replaceWith(champ);
+  champ.focus();
+  champ.setSelectionRange(champ.value.length, champ.value.length);
+  let fini = false;
+  const terminer = enregistrer => occupe(null, async () => {
+    if (fini) return;
+    fini = true;
+    const texte = champ.value.trim();
+    if (enregistrer && texte !== (a.notes || "").trim()) { await enregistrerNote(a, texte); await charger(); }
+    else rendre();
+  });
+  champ.onkeydown = e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); terminer(true); }
+    if (e.key === "Escape") { e.stopPropagation(); terminer(false); }
+  };
+  champ.onblur = () => terminer(true);
+}
+
+// --- Fiche d'un addon ----------------------------------------------------------------
+function ouvrirFiche(a) {
+  const info = a.info || {};
+  const lien = lienSource(a);
+  const lignes = [
+    ["Genre", esc(genreDe(a))],
+    ["Source", esc(SOURCES[a.source?.type] || "—") + (a.source?.projet ? ` · projet ${esc(a.source.projet)}` : "") + (lien ? ` · <a href="${esc(lien)}" target="_blank" rel="noopener">page</a>` : "")],
+    ["Auteur", esc(info.auteur || "—")],
+    ["Dossiers", (a.dossiers || []).length ? `<code>${a.dossiers.map(esc).join("<br>")}</code>` : "—"],
+  ];
+  if (a.dossiers_manquants?.length && a.installe) lignes.push(["Manquants", `<span class="attention">${esc(a.dossiers_manquants.join(", "))}</span>`]);
+  if (a.incompatibles?.length) lignes.push(["Attention", `<span class="attention">pas de .toc WoW Forever : ${esc(a.incompatibles.join(", "))}</span>`]);
+  if (a.maj?.verifie_le) lignes.push(["Vérifié le", esc(a.maj.verifie_le)]);
+  const d = document.getElementById("d-fiche"), f = document.getElementById("f-fiche");
+  f.innerHTML = `
+    <div class="fiche-tete">${logo(a)}<div style="min-width:0"><h3>${esc(a.nom)}</h3>
+      <div class="aide">${esc(genreDe(a))}${a.perso ? ` · <span class="st-perso">Ma création</span>` : ""}</div></div></div>
+    ${description(a) ? `<p class="fiche-desc">${esc(description(a))}</p>` : ""}
+    <div class="fiche-statut" role="group" aria-label="Statut">${ETAT.statuts.map(s => `<button type="button" data-statut="${s}" class="st-${s}" aria-pressed="${a.statut === s}">${LIBELLES[s]}</button>`).join("")}</div>
+    <div class="fiche-note">
+      <div class="fiche-note-tete"><label for="fiche-notes">Mes notes</label><span class="note-etat" id="fiche-etat"></span></div>
+      <textarea rows="4" id="fiche-notes" placeholder="Ce que tu en penses, tes réglages…">${esc(a.notes || "")}</textarea>
+    </div>
+    <div class="fiche-ligne"><span class="etat-ligne">${version(a) ? "Version " : ""}${ligneVersion(a)}</span><span>${actionAddon(a)}</span></div>
+    <details class="fiche-details"><summary>Détails</summary><dl class="fiche-infos">${lignes.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl></details>
+    <div class="pied-fenetre">
+      <button class="btn discret" type="button" id="fiche-retirer" style="margin-right:auto">${a.installe ? "Désinstaller" : "Supprimer"}</button>
+      ${distant(a) && a.installe ? `<button class="btn" type="button" id="fiche-reinstaller">Réinstaller</button>` : ""}
+      <button class="btn" type="button" id="fiche-modifier">Modifier</button>
+      <button class="btn or" type="button" id="fiche-fermer">Fermer</button>
+    </div>`;
+
+  // Notes enregistrées toutes seules : après une pause dans la frappe, et à la fermeture
+  const notes = f.querySelector("#fiche-notes"), etatNote = f.querySelector("#fiche-etat");
+  let minuteur;
+  const sauver = async () => {
+    clearTimeout(minuteur);
+    const texte = notes.value.trim();
+    if (texte === (a.notes || "").trim()) return;
+    try { await enregistrerNote(a, texte); etatNote.textContent = "Enregistré"; }
+    catch (e) { toast(e.message, "erreur"); }
+  };
+  notes.oninput = () => { etatNote.textContent = ""; clearTimeout(minuteur); minuteur = setTimeout(sauver, 700); };
+  d.addEventListener("close", () => sauver().then(charger), { once: true });
+
+  f.querySelector("#fiche-fermer").onclick = async () => { await sauver(); d.close(); };
+  f.querySelector("#fiche-modifier").onclick = async () => { await sauver(); d.close(); ouvrirEdition(a); };
+  f.querySelector("#fiche-retirer").onclick = async () => { await sauver(); actions.retirer(a); };
+  f.querySelectorAll("[data-statut]").forEach(b => b.onclick = () => occupe(null, async () => {
+    a.statut = b.dataset.statut;
+    await api("/api/addon", { addon: fiche(a), ancien_id: a.id });
+    f.querySelectorAll("[data-statut]").forEach(x => x.setAttribute("aria-pressed", x === b));
+  }));
+  const reinstaller = f.querySelector("#fiche-reinstaller");
+  if (reinstaller) reinstaller.onclick = () => { d.close(); actions.installer(a); };
+  f.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
+    d.close();
+    if (b.dataset.act === "lier") actions.lier(a);
+    else if (b.dataset.act === "chercher") chercherEnLigne(a.nom, a.id);
+    else actions.installer(a);
+  });
+  d.showModal();
+  notes.focus();
+  notes.setSelectionRange(notes.value.length, notes.value.length);
+}
+
+// --- Recherche CurseForge et addons notés « à tester » --------------------------------------
+// cible : addon noté par son seul nom, que le résultat choisi viendra compléter
+async function chercherEnLigne(texte, cible = null) {
+  if (!texte) return;
+  document.getElementById("recherche").value = texte;
+  recherche = cible ? "" : texte.toLowerCase();
+  enLigne = { texte, cible, chargement: true };
+  rendre();
+  try { enLigne = { texte, cible, ...(await api("/api/rechercher", { texte })) }; }
+  catch (e) { enLigne = { texte, cible, erreur: e.message }; }
+  rendre();
+}
+
+const nombre = n => n >= 1e6 ? ns(n / 1e6) + " M" : n >= 1e3 ? ns(n / 1e3) + " k" : String(n);
+const ns = x => x.toFixed(x < 10 ? 1 : 0).replace(".", ",");
+
+function carteResultat(r, i) {
+  const a = { nom: r.nom, logo: r.logo };
+  const deja = r.deja && ETAT.addons.find(x => x.id === r.deja.id);
+  const action = deja?.installe
+    ? `<span class="st-${deja.statut}">Dans ta collection · ${LIBELLES[deja.statut]}</span>`
+    : (deja ? `<span class="st-${deja.statut}">Déjà noté · </span>`   // noté sans être installé : on peut l'installer
+        : `<button class="btn petit" data-res="plus-tard" data-i="${i}" title="Le garder dans « À tester » sans l'installer">Plus tard</button>`)
+      + `<button class="btn petit or" data-res="installer" data-i="${i}">Installer</button>`;
+  return `<article class="carte resultat">
+    <div class="haut">${logo(a)}<div style="min-width:0"><h3>${esc(r.nom)}</h3>
+      <div class="cat">${r.forever ? `<span class="forever">Fait pour Forever</span>` : `<span class="pas-forever">Pas de version Forever</span>`} · ${r.telechargements ? nombre(r.telechargements) + " téléchargements" : "projet " + r.projet}</div></div></div>
+    <p>${esc(r.description)}</p>
+    <div class="pied"><span class="ver">${esc(r.auteurs)}</span><span class="droite">${action}</span></div>
+  </article>`;
+}
+
+function rendreEnLigne() {
+  if (!enLigne) return "";
+  const t = esc(enLigne.texte);
+  const noter = enLigne.cible ? "" : `<button class="btn petit" data-res="noter">Noter « ${t} » à tester</button>`;
+  const site = `<a class="btn petit" target="_blank" rel="noopener" href="https://www.curseforge.com/wow/search?class=addons&sortBy=relevancy&gameVersionTypeId=88568&search=${encodeURIComponent(enLigne.texte)}">Chercher sur le site CurseForge ↗</a>`;
+  let corps;
+  if (enLigne.chargement) corps = `<div class="message">Recherche de « ${t} » sur CurseForge…</div>`;
+  else if (enLigne.erreur) corps = `<div class="message"><span>${ETAT?.liens_curseforge
+      ? "Cherche-le sur le site : le bouton <b>Install</b> l'installera directement dans l'appli. Ou colle ici son <b>Project ID</b>."
+      : "Cherche-le sur le site et colle ici son <b>Project ID</b> (encadré « About Project »)."}</span>${site}${noter}</div>`;
+  else if (!enLigne.resultats.length) corps = `<div class="message"><span>Rien trouvé sur CurseForge pour « ${t} ».</span>${site}${noter}</div>`;
+  else corps = `<div class="grille" style="display:grid">${enLigne.resultats.map(carteResultat).join("")}</div>
+    <div class="message" style="margin-top:12px"><span>Ce n'est aucun de ceux-là ?</span>${site}${noter}</div>`;
+  const titre = enLigne.cible ? `Quel addon est « ${t} » ?` : "Sur CurseForge";
+  return `<section class="en-ligne"><h2>${titre}<small>${enLigne.resultats ? enLigne.resultats.length + " résultats, ceux faits pour Forever d'abord" : ""}</small>
+    <button class="fermer" data-res="fermer">Fermer ✕</button></h2>${corps}</section>`;
+}
+
+function brancherEnLigne() {
+  document.querySelectorAll("[data-res]").forEach(b => b.onclick = ev => {
+    ev.stopPropagation();
+    const r = enLigne?.resultats?.[+b.dataset.i];
+    const fiche = r && { nom: r.nom, logo: r.logo, description: r.description, url: r.url };
+    if (b.dataset.res === "fermer") { enLigne = null; return rendre(); }
+    if (b.dataset.res === "noter") return occupe(b, async () => {
+      const a = await api("/api/noter", { nom: enLigne.texte });
+      toast(`« ${a.nom} » noté dans « À tester ».`);
+      enLigne = null; document.getElementById("recherche").value = ""; recherche = "";
+      await charger();
+    });
+    if (b.dataset.res === "plus-tard") return occupe(b, async () => {
+      await api("/api/noter", { ...fiche, projet: r.projet });
+      toast(`${r.nom} noté dans « À tester », à installer quand tu veux.`);
+      await chercherEnLigne(enLigne.texte, enLigne.cible);
+      await charger();
+    });
+    if (b.dataset.res === "installer") return occupe(b, async () => {
+      toast(`Téléchargement de ${r.nom}…`, "info", 3000);
+      const res = await api("/api/ajouter-curseforge", { projet: r.projet, fiche, cible: enLigne.cible || r.deja?.id });
+      toast(`${res.nom} installé, rangé dans « À tester ».`);
+      enLigne = null; document.getElementById("recherche").value = ""; recherche = "";
+      onglet = "a_tester"; ecrireLocal("onglet", onglet);
+      await charger();
+    });
+  });
+}
+
+// --- Dossier du jeu : Analyser (trouver) / Localiser (choisir) -----------------------------
+document.getElementById("b-jeu").onclick = e => {
+  // occupe(null) : le libellé du bouton est recalculé par rendre(), il ne faut pas le restaurer après
+  const bouton = e.currentTarget;
+  const parcourir = () => occupe(null, async () => {
+    toast("Choisis le dossier World of Warcraft dans la fenêtre qui s'ouvre.", "info", 4000);
+    const r = await api("/api/jeu/parcourir", {});
+    if (!r.annule) { toast(`Jeu trouvé : ${r.dossier_addons}`); await charger(); }
+  });
+  const choisir = chemin => occupe(null, async () => { await api("/api/jeu/choisir", { chemin }); toast(`Jeu trouvé : ${chemin}`); await charger(); });
+  if (bouton.textContent === "Localiser") return parcourir();
+  occupe(null, async () => {
+    const { trouves } = await api("/api/jeu/analyser", {});
+    if (trouves.length === 1) return choisir(trouves[0]);
+    if (!trouves.length) { toast("WoW Forever introuvable automatiquement : indique son dossier.", "info"); return parcourir(); }
+    ouvrirMenu(bouton, [{ etiquette: "Plusieurs installations trouvées" }, ...trouves.map(t => ({ texte: t, action: () => choisir(t) })),
+      "-", { texte: "Autre dossier…", action: parcourir }]);
+  });
+};
+
+addEventListener("focus", () => { if (ETAT && !document.activeElement?.classList.contains("note-champ")) charger(); });
+
+// --- En-tête ---------------------------------------------------------------------------
+document.getElementById("recherche").oninput = e => { recherche = e.target.value.trim().toLowerCase(); if (!recherche) enLigne = null; rendre(); };
+document.getElementById("f-recherche").onsubmit = e => { e.preventDefault(); chercherEnLigne(document.getElementById("recherche").value.trim()); };
+addEventListener("keydown", e => {
+  if ((e.ctrlKey && e.key.toLowerCase() === "k") || (e.key === "/" && !/input|textarea|select/i.test(document.activeElement.tagName))) {
+    e.preventDefault(); document.getElementById("recherche").focus();
+  }
+});
+
+document.getElementById("b-verifier").onclick = e => occupe(e.currentTarget, async () => {
+  const r = await api("/api/verifier", {});
+  const erreurs = Object.values(r).filter(x => x.erreur).length;
+  await charger();
+  const n = ETAT.addons.filter(aMaj).length;
+  toast(`${Object.keys(r).length} addons vérifiés : ${n ? n + " mise(s) à jour" : "tout est à jour"}` + (erreurs ? `, ${erreurs} erreur(s)` : ""), n ? "info" : "ok");
+});
+
+const fenetreAjout = document.getElementById("d-ajouter");
+document.getElementById("b-ajouter").onclick = () => { document.getElementById("f-ajouter").reset(); fenetreAjout.showModal(); };
+document.getElementById("f-ajouter").onsubmit = e => {
+  e.preventDefault();
+  const texte = document.getElementById("aj-texte").value.trim();
+  if (!texte) return;
+  fenetreAjout.close("ok");
+  chercherEnLigne(texte);
+};
+document.getElementById("aj-zip").onclick = () => { fenetreAjout.close("annuler"); choisirZip(null); };
+document.getElementById("aj-creation").onclick = () => {
+  fenetreAjout.close("annuler");
+  occupe(null, async () => {
+    toast("Choisis le dossier de ton addon dans la fenêtre qui s'ouvre.", "info", 4000);
+    const r = await api("/api/creation", {});
+    if (r.annule) return;
+    toast(`${r.nom} installé.`);
+    onglet = "perso"; ecrireLocal("onglet", onglet);
+    await charger();
+  });
+};
+
+document.getElementById("b-reglages").onclick = e => ouvrirMenu(e.currentTarget, [
+  { texte: "Lancer au démarrage de Windows", coche: !!ETAT?.demarrage, action: () => occupe(null, async () => {
+      const r = await api("/api/demarrage", { actif: !ETAT.demarrage });
+      toast(r.demarrage ? "L'appli se lancera avec Windows." : "Lancement au démarrage désactivé.");
+      await charger();
+    }) },
+  { texte: "Ouvrir les liens « Install » du site CurseForge", coche: !!ETAT?.liens_curseforge, action: () => occupe(null, async () => {
+      const r = await api("/api/liens-curseforge", { actif: !ETAT.liens_curseforge });
+      toast(r.liens_curseforge ? "Le bouton Install du site CurseForge installe maintenant dans l'appli." : "Les liens CurseForge sont rendus à l'appli CurseForge.");
+      await charger();
+    }) },
+  { texte: "Relire le dossier AddOns", action: () => charger() },
+  { texte: "Nouveautés de la version", action: () => montrerNouveautes() },
+  "-",
+  { texte: "Quitter Forever Addons Manager", danger: true, action: () => {
+      if (!confirm("Quitter Forever Addons Manager ?\nL'icône près de l'horloge disparaît jusqu'au prochain lancement.")) return;
+      api("/api/quitter", {}).catch(() => {});
+      document.getElementById("contenu").innerHTML = `<p class="vide">Forever Addons Manager est arrêté. Tu peux fermer cette fenêtre.</p>`;
+    } },
+]);
+
+// --- Zip -----------------------------------------------------------------------------
+let zipPour = null;
+function choisirZip(id) { zipPour = id; const i = document.getElementById("i-zip"); i.value = ""; i.click(); }
+document.getElementById("i-zip").onchange = e => e.target.files[0] && envoyerZip(e.target.files[0], zipPour);
+async function envoyerZip(fichier, id) {
+  if (!fichier.name.toLowerCase().endsWith(".zip")) return toast("Il faut un fichier .zip", "erreur");
+  await occupe(null, async () => {
+    const q = new URLSearchParams({ nom: fichier.name, ...(id ? { id } : {}) });
+    const r = await api("/api/installer-zip?" + q, await fichier.arrayBuffer(), true);
+    toast(`${r.nom} installé depuis ${fichier.name}` + (r.remplaces.length ? `\nL'ancienne version est dans les sauvegardes.` : ""));
+    await charger();
+  });
+}
+const depot = document.getElementById("depot");
+let compteurDrag = 0;
+addEventListener("dragenter", e => { if ([...e.dataTransfer.types].includes("Files")) { compteurDrag++; depot.classList.add("actif"); } });
+addEventListener("dragleave", () => { if (--compteurDrag <= 0) { compteurDrag = 0; depot.classList.remove("actif"); } });
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", e => { e.preventDefault(); compteurDrag = 0; depot.classList.remove("actif"); const f = e.dataTransfer.files[0]; if (f) envoyerZip(f, null); });
+
+// --- Édition ---------------------------------------------------------------------------
+const form = document.getElementById("f-edition");
+form.categorie.innerHTML = GENRES.map(g => `<option value="${g}">${g}</option>`).join("");
+form.statut.innerHTML = Object.entries(LIBELLES).map(([k, l]) => `<option value="${k}">${l}</option>`).join("");
+form.type.innerHTML = Object.entries(SOURCES).map(([k, l]) => `<option value="${k}">${l}</option>`).join("");
+function majChampsSource() {
+  const t = form.type.value;
+  document.getElementById("l-projet").hidden = t !== "curseforge";
+  document.getElementById("l-motif").hidden = t !== "github";
+  document.getElementById("l-url").hidden = t === "aucune";
+  form.canal.closest("label").hidden = !["curseforge", "github"].includes(t);
+  form.url.placeholder = t === "local" ? "C:\\…\\MonAddon" : t === "github" ? "https://github.com/auteur/depot" : "https://…";
+}
+form.type.onchange = majChampsSource;
+
+function ouvrirEdition(a, prerempli) {
+  enEdition = a;
+  const v = a ? fiche(a) : (prerempli || {});
+  document.getElementById("e-titre").textContent = a ? `Modifier « ${a.nom} »` : "Nouvel addon";
+  form.nom.value = v.nom || "";
+  form.statut.value = v.statut || "a_tester";
+  form.categorie.value = genreDe(v);
+  form.id.value = a ? a.id : "";
+  form.description.value = v.description || "";
+  form.notes.value = v.notes || "";
+  form.perso.checked = !!v.perso;
+  form.type.value = v.source?.type || "aucune";
+  form.canal.value = v.source?.canal || "release";
+  form.projet.value = v.source?.projet || "";
+  form.motif.value = v.source?.motif || "";
+  form.url.value = v.source?.url || "";
+  form.dossiers.value = (v.dossiers || []).join("\n");
+  majChampsSource();
+  document.getElementById("d-edition").showModal();
+}
+
+document.getElementById("d-edition").addEventListener("close", async ev => {
+  if (ev.target.returnValue !== "ok") return;
+  const base = enEdition ? fiche(enEdition) : {};
+  const addon = {
+    ...base,
+    id: form.id.value.trim(), nom: form.nom.value.trim(), statut: form.statut.value,
+    categorie: form.categorie.value, description: form.description.value, notes: form.notes.value, perso: form.perso.checked,
+    dossiers: form.dossiers.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean),
+    source: { type: form.type.value, url: form.url.value, projet: form.projet.value, motif: form.motif.value, canal: form.canal.value },
+  };
+  await occupe(null, async () => {
+    await api("/api/addon", { addon, ancien_id: enEdition?.id });
+    toast(`${addon.nom} enregistré.`);
+    await charger();
+  });
+});
+
+// --- Nouveautés (CHANGELOG.md) ---------------------------------------------------------
+function markdownSimple(md) {
+  // Titres « ## 1.0.0 — date » et puces « - texte » ; **gras** et `code` dans les puces.
+  const ligne = t => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
+  let html = "", liste = false;
+  for (const l of md.split(/\r?\n/)) {
+    const titre = l.match(/^##\s+(\S+)\s*(?:[—-]\s*(.*))?$/);
+    if (titre) { if (liste) { html += "</ul>"; liste = false; } html += `<h4>Version ${esc(titre[1])}${titre[2] ? `<small>${esc(titre[2])}</small>` : ""}</h4>`; continue; }
+    const puce = l.match(/^\s*[-*]\s+(.*)$/);
+    if (puce) { if (!liste) { html += "<ul>"; liste = true; } html += `<li>${ligne(puce[1])}</li>`; }
+  }
+  return html + (liste ? "</ul>" : "");
+}
+async function montrerNouveautes() {
+  await occupe(null, async () => {
+    const r = await api("/api/changelog");
+    document.getElementById("journal").innerHTML = markdownSimple(r.texte);
+    document.getElementById("d-changelog").showModal();
+  });
+}
+document.getElementById("b-version").onclick = montrerNouveautes;
+
+document.querySelectorAll("[data-fermer]").forEach(b => b.onclick = () => b.closest("dialog").close("annuler"));
+
+// Première ouverture après une mise à jour de l'appli : on montre les nouveautés une fois
+charger().then(() => {
+  if (!ETAT) return;
+  const vue = lireLocal("version-vue");
+  ecrireLocal("version-vue", ETAT.version);
+  if (vue && vue !== ETAT.version) montrerNouveautes();
+});
+</script>
+</body>
+</html>

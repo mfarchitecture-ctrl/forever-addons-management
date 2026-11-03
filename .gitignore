@@ -1,0 +1,16 @@
+# Seul ce qui est listé ici part sur GitHub : le dépôt est public, les données personnelles restent sur le PC.
+*
+!.gitignore
+!.github/
+!.github/**
+!hamax.py
+!requirements.txt
+!construire.ps1
+!publier.ps1
+!installateur.iss
+!CHANGELOG.md
+!README.md
+!ui/
+!ui/**
+!outils/
+!outils/icone.py
