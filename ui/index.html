@@ -545,7 +545,7 @@ function carteInconnue(g) {
   return `<article class="carte" data-inconnu="${esc(g.dossier)}">
     <div class="haut">${logo(a)}<div style="min-width:0"><h3>${esc(a.nom)}</h3><div class="cat">${esc(g.dossiers.length > 1 ? g.dossiers.length + " dossiers" : g.dossier)}</div></div></div>
     <p>${esc(g.info.notes || "")}</p>
-    <div class="pied"><span class="ver">${esc(g.info.version || "")}</span><span class="droite"><button class="btn petit or" data-act="ajouter-inconnu">Ajouter au registre</button></span></div>
+    <div class="pied"><span class="ver">${esc(g.info.version || "")}</span><span class="droite"><button class="btn petit or" data-act="ajouter-inconnu">Ajouter à ma collection</button></span></div>
   </article>`;
 }
 
@@ -567,7 +567,7 @@ function rendre() {
 
   if (onglet === "inconnus") {
     const liste = ETAT.inconnus.filter(g => !recherche || g.dossiers.join(" ").toLowerCase().includes(recherche));
-    html += `<p class="aide" style="margin-bottom:14px">Ces dossiers sont dans AddOns mais pas dans ton registre (installés à la main ou par l'appli CurseForge).</p>`;
+    html += `<p class="aide" style="margin-bottom:14px">Ces dossiers sont dans AddOns, mais sans fichier .toc : ils ne ressemblent pas à des addons.</p>`;
     html += liste.length ? `<div class="grille" style="display:grid">${liste.map(carteInconnue).join("")}</div>` : `<p class="vide">Rien ici.</p>`;
   } else {
     const dansOnglet = ETAT.addons.filter(correspond);
@@ -731,7 +731,8 @@ document.getElementById("contenu").addEventListener("change", ev => {
     rendre();
   }
 });
-async function mettreAJourAppli(bouton) {
+async function mettreAJourAppli() {
+  const bouton = document.getElementById("b-maj-appli");
   if (!confirm(`Installer ${NOM} ${ETAT.maj_appli.version} ?\nL'appli se ferme, se met à jour et se rouvre toute seule. Ta collection et tes notes sont conservées.`)) return;
   bouton.disabled = true;
   const suivi = setInterval(async () => {
@@ -750,7 +751,7 @@ async function mettreAJourAppli(bouton) {
 }
 
 document.getElementById("contenu").addEventListener("click", ev => {
-  if (ev.target.closest("#b-maj-appli")) return mettreAJourAppli(ev.target.closest("#b-maj-appli"));
+  if (ev.target.closest("#b-maj-appli")) return mettreAJourAppli();
   if (ev.target.closest("#b-notes-appli")) {
     document.getElementById("journal").innerHTML = markdownSimple(`## ${ETAT.maj_appli.version}\n${ETAT.maj_appli.notes}`);
     return document.getElementById("d-changelog").showModal();
@@ -1033,6 +1034,15 @@ document.getElementById("aj-creation").onclick = () => {
 };
 
 document.getElementById("b-reglages").onclick = e => ouvrirMenu(e.currentTarget, [
+  { texte: ETAT?.maj_appli ? `Installer la version ${ETAT.maj_appli.version}` : "Chercher une mise à jour de l'appli", action: () => {
+      if (ETAT.maj_appli) return mettreAJourAppli();
+      occupe(null, async () => {
+        const r = await api("/api/appli/verifier", {});
+        await charger();
+        toast(r.maj ? `La version ${r.maj.version} est disponible.` : "L'appli est à jour.");
+      });
+  } },
+  "-",
   { texte: "Lancer au démarrage de Windows", coche: !!ETAT?.demarrage, action: () => occupe(null, async () => {
       const r = await api("/api/demarrage", { actif: !ETAT.demarrage });
       toast(r.demarrage ? "L'appli se lancera avec Windows." : "Lancement au démarrage désactivé.");

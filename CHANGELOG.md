@@ -1,5 +1,11 @@
 # Nouveautés de Forever Addons Manager
 
+## 0.7.1 — 3 novembre 2026
+- **Installateur tout neuf** : thème sombre et choix du dossier.
+- Tous les addons déjà présents dans le jeu rejoignent ta collection tout seuls.
+- Nouveau bouton dans ⚙ pour chercher une mise à jour de l'appli.
+- Meilleure détection des addons que tu développes.
+
 ## 0.7.0 — 3 novembre 2026
 - **Installation en un double-clic**, sans droits administrateur, pour toute la guilde.
 - **L'appli se met à jour toute seule** : elle te prévient qu'une version est disponible, un clic et c'est fait.

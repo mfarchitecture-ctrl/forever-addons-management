@@ -33,7 +33,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.7.0"
+VERSION = "0.7.1"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
@@ -168,10 +168,15 @@ def est_lien(chemin):
     return chemin.is_symlink() or os.path.isjunction(chemin)
 
 
+def cible_lien(dossier):
+    return Path(os.readlink(dossier).removeprefix("\\\\?\\"))
+
+
 def info_dossier(dossier, interface_cible):
     """Infos d'un dossier d'addon, d'après le .toc qui vise WoW Forever si possible."""
     lien = est_lien(dossier)
-    tocs = [(toc, lire_toc(toc)) for toc in sorted(dossier.glob("*.toc"))]
+    # Un lien se lit directement dans sa cible : selon le contexte, Windows peut refuser de le traverser
+    tocs = [(toc, lire_toc(toc)) for toc in sorted((cible_lien(dossier) if lien else dossier).glob("*.toc"))]
     if not tocs:
         return {"titre": dossier.name, "sans_toc": True, "compatible": False, "lien": lien}
     nom = dossier.name
@@ -205,7 +210,7 @@ def scanner(config):
     return {
         d.name: info_dossier(d, int(config["interface"]))
         for d in sorted(base.iterdir(), key=lambda p: p.name.lower())
-        if d.is_dir()
+        if d.is_dir() or est_lien(d)
     }
 
 
@@ -261,23 +266,24 @@ def maj_dispo(addon, info, distant):
 # --- État global --------------------------------------------------------------
 
 def reconnaitre(scan):
-    """Addons installés hors de l'appli : ceux qui portent un ID CurseForge rejoignent la collection tout seuls,
-    rangés « à tester ». Les autres restent dans « Non répertoriés »."""
+    """Tout addon présent dans le jeu rejoint la collection tout seul, rangé « à tester ».
+    Sans ID CurseForge il n'aura pas de mises à jour, mais il est là. Restent à part les dossiers sans .toc."""
     registre = charger_registre()
     reclames = {d for a in registre["addons"] for d in a.get("dossiers", [])}
     for groupe in regrouper([n for n in scan if n not in reclames], scan):
         info = groupe["info"]
-        projet = str(info.get("curseforge_id") or "")
-        if not projet.isdigit():
+        if info.get("sans_toc"):
             continue
-        deja = next((a for a in registre["addons"] if str(a.get("source", {}).get("projet")) == projet), None)
+        projet = str(info.get("curseforge_id") or "")
+        site = info.get("site", "")
+        deja = next((a for a in registre["addons"] if projet.isdigit() and str(a.get("source", {}).get("projet")) == projet), None)
         if deja:
             enregistrer_addon({**deja, "dossiers": deja.get("dossiers", []) + groupe["dossiers"]}, deja["id"])
         else:
             enregistrer_addon({
                 "nom": info.get("titre") or groupe["dossier"], "statut": "a_tester",
                 "description": info.get("notes", ""), "dossiers": groupe["dossiers"],
-                "source": {"type": "curseforge", "projet": projet, "url": info.get("site", "")},
+                "source": {"type": "curseforge", "projet": projet, "url": site} if projet.isdigit() else {"type": "page" if site else "aucune", "url": site},
             })
 
 
@@ -1132,9 +1138,16 @@ def chercher_maj_appli():
             maj = lire_release(json.load(r))
     except (Erreur, OSError, ValueError) as e:
         print(f"{maintenant()} mise à jour de l'appli : {e}")
-        return
+        return False
     MAJ_APPLI.clear()
     MAJ_APPLI.update(maj or {})
+    return True
+
+
+def verifier_appli():
+    if chercher_maj_appli() is False:
+        raise Erreur("Impossible de joindre GitHub pour le moment. Réessaie plus tard.")
+    return {"maj": MAJ_APPLI or None}
 
 
 def controler_installateur(octets, maj):
@@ -1687,6 +1700,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 "/api/addon/supprimer": lambda: supprimer_du_registre(donnees["id"]) or {},
                 "/api/verifier": lambda: verifier_tout(donnees.get("ids")),
                 "/api/appli/maj": installer_maj_appli,
+                "/api/appli/verifier": verifier_appli,
                 "/api/installer": lambda: installer_distant(donnees["id"]),
                 "/api/ajouter-curseforge": lambda: ajouter_curseforge(donnees["projet"], donnees.get("canal", "release"),
                                                                       donnees.get("fiche"), donnees.get("cible")),
