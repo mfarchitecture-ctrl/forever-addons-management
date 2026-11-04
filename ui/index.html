@@ -434,9 +434,9 @@ const description = a => a.description || a.info?.notes || "";
 
 function lienSource(a) {
   const s = a.source || {};
-  if (s.type === "curseforge") return s.url || (s.projet ? `https://www.curseforge.com/projects/${s.projet}` : "");
-  if (s.type === "github" || s.type === "page") return s.url;
-  return "";
+  const lien = s.type === "curseforge" ? s.url || (s.projet ? `https://www.curseforge.com/projects/${s.projet}` : "")
+    : s.type === "github" || s.type === "page" ? s.url : "";
+  return /^https?:\/\//i.test(lien || "") ? lien : "";   // l'adresse peut venir du .toc de l'addon
 }
 
 // Logo CurseForge, sinon pastille avec les initiales (couleur stable tirée du nom)

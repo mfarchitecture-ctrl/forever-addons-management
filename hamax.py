@@ -15,6 +15,7 @@ propre fenêtre (Edge en mode application). Au démarrage de Windows il tourne s
 fenêtre, en priorité basse : aucun calcul tant qu'on ne s'en sert pas, sauf une
 vérification des mises à jour toutes les N heures (notification Windows si besoin).
 """
+import _winapi
 import hashlib
 import io
 import json
@@ -33,7 +34,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.7.1"
+VERSION = "0.7.2"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
@@ -1019,9 +1020,10 @@ def lier(addon_id):
     dest = dossier_addons() / source.name
     if dest.exists() or est_lien(dest):
         raise Erreur(f"Il existe déjà un dossier {source.name} dans AddOns.")
-    r = subprocess.run(["cmd", "/c", "mklink", "/J", str(dest), str(source)], capture_output=True, text=True)
-    if r.returncode != 0:
-        raise Erreur(f"Échec du lien : {r.stderr or r.stdout}")
+    try:  # appel direct, sans passer par cmd : un « & » dans le nom du dossier ne doit rien exécuter
+        _winapi.CreateJunction(str(source), str(dest))
+    except OSError as e:
+        raise Erreur(f"Échec du lien : {e}") from e
     if source.name not in addon.get("dossiers", []):
         enregistrer_addon({**addon, "dossiers": addon.get("dossiers", []) + [source.name]}, addon_id)
     return {"lien": str(dest), "cible": str(source)}
@@ -1427,9 +1429,24 @@ def _suivre_echelle(hwnd):
     form.BeginInvoke(Action(lambda: ajuster(True)))   # au cas où elle s'ouvre déjà sur un autre écran
 
 
+def limiter_liens_externes():
+    """Les liens viennent en partie des fichiers .toc des addons : seuls http et https sortent de la fenêtre.
+    Sinon Windows lancerait le programme lié à n'importe quel protocole (calculator:, search-ms:…)."""
+    ouvrir = webbrowser.open
+
+    def filtre(url, *arguments, **options):
+        if urllib.parse.urlparse(str(url)).scheme.lower() not in ("http", "https"):
+            print(f"{maintenant()} lien refusé : {str(url)[:80]}")
+            return False
+        return ouvrir(url, *arguments, **options)
+
+    webbrowser.open = filtre
+
+
 def fenetre_seule():
     """Processus --fenetre : montre l'interface, et se termine quand on ferme la fenêtre."""
     global FENETRE
+    limiter_liens_externes()
     import ctypes
     ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))   # PER_MONITOR_AWARE_V2
     import webview
