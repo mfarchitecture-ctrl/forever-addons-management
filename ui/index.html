@@ -38,7 +38,8 @@
   .titre-appli .sous { display: flex; align-items: center; gap: 8px; color: var(--tres-doux); font-size: 12.5px; margin-top: 3px; white-space: nowrap; }
   .version { background: none; border: 1px solid var(--ligne); border-radius: 4px; color: var(--doux); font-size: 11.5px; padding: 0 6px; cursor: pointer; }
   .version:hover { color: var(--or); border-color: var(--or-fonce); }
-  .tete .droite { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .tete .droite { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .tete .actions { display: flex; align-items: center; gap: 8px; }
   .champ { height: 34px; width: 230px; padding: 0 11px; border: 1px solid var(--ligne); border-radius: 5px; background: var(--surface); outline: none; }
   .champ:focus { border-color: var(--or-fonce); }
   .champ::placeholder { color: var(--tres-doux); }
@@ -49,7 +50,7 @@
   .btn.or:hover { background: var(--or-clair); }
   .btn.petit { height: 28px; padding: 0 11px; font-size: 13px; }
   .btn.icone { width: 34px; padding: 0; justify-content: center; }
-  .bascule { display: inline-flex; align-items: center; gap: 8px; color: var(--doux); font-size: 13px; cursor: pointer; user-select: none; padding: 0 6px; }
+  .bascule { display: inline-flex; align-items: center; gap: 8px; color: var(--doux); font-size: 13px; cursor: pointer; user-select: none; }
   .bascule i { width: 30px; height: 17px; border-radius: 999px; background: #2b261e; position: relative; }
   .bascule i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #8a7f6d; transition: transform .15s; }
   body.compact .bascule i { background: var(--or-fonce); }
@@ -258,7 +259,9 @@
 
   @media (max-width: 860px) {
     .tete { flex-wrap: wrap; padding: 16px 16px 0; }
-    .tete .droite { margin-left: 0; width: 100%; flex-wrap: wrap; }
+    .tete .droite { margin-left: 0; width: 100%; align-items: stretch; }
+    .tete .bascule { align-self: flex-end; }
+    .tete .actions { flex-wrap: wrap; }
     .champ { flex: 1; width: auto; }
     .onglets { margin: 14px 16px 0; }
     main { padding: 16px; }
@@ -278,10 +281,13 @@
     </div>
     <div class="droite">
       <label class="bascule" data-info="Afficher en tableau"><i></i>Compact</label>
-      <button class="btn" id="b-verifier" data-info="Cherche les mises à jour de tes addons">Vérifier les mises à jour</button>
-      <button class="btn" id="b-ajouter" data-info="Ajouter un addon">+ Ajouter un addon</button>
-      <button class="btn icone" id="b-reglages" data-info="Réglages">⚙</button>
-      <button class="version-pied" id="b-version" data-info="Nouveautés">v…</button>
+      <div class="actions">
+        <button class="btn or" id="b-jouer" data-info="Lancer WoW Forever">Jouer</button>
+        <button class="btn" id="b-verifier" data-info="Cherche les mises à jour de tes addons">Vérifier les mises à jour</button>
+        <button class="btn" id="b-ajouter" data-info="Ajouter un addon">+ Ajouter un addon</button>
+        <button class="btn icone" id="b-reglages" data-info="Réglages">⚙</button>
+        <button class="version-pied" id="b-version" data-info="Nouveautés">v…</button>
+      </div>
     </div>
   </div>
   <form class="recherche" id="f-recherche" autocomplete="off">
@@ -1003,6 +1009,10 @@ addEventListener("keydown", e => {
   }
 });
 
+document.getElementById("b-jouer").onclick = e => occupe(e.currentTarget, async () => {
+  await api("/api/jouer", {});
+  toast("WoW Forever se lance.");
+});
 document.getElementById("b-verifier").onclick = e => occupe(e.currentTarget, async () => {
   const r = await api("/api/verifier", {});
   const erreurs = Object.values(r).filter(x => x.erreur).length;

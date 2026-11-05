@@ -38,6 +38,7 @@ VERSION = "0.7.3"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
+JEU_BATTLENET = "WoWF"   # WoW Forever pour Battle.net --exec (la casse compte)
 
 # Lancé depuis le .exe (PyInstaller) ou depuis le script ?
 FIGE = getattr(sys, "frozen", False)
@@ -1044,6 +1045,34 @@ def ouvrir(addon_id):
     return {"ouvert": str(dossier)}
 
 
+# --- Lancer le jeu ---------------------------------------------------------------------
+
+def _battlenet():
+    """Battle.net.exe, d'après le protocole battlenet:// qu'il inscrit dans Windows ; None s'il n'y est pas."""
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, r"battlenet\shell\open\command") as cle:
+            commande = winreg.QueryValue(cle, None)
+    except OSError:
+        return None
+    m = re.match(r'"([^"]+)"', commande)
+    return Path(m.group(1)) if m and Path(m.group(1)).is_file() else None
+
+
+def jouer():
+    """Passe par Battle.net, seul à connecter le compte : Wow.exe seul demande les identifiants."""
+    forever = dossier_addons().parent.parent
+    wow = forever / "Wow.exe"
+    if not wow.is_file():
+        raise Erreur(f"Wow.exe est introuvable dans {forever}.")
+    battlenet = _battlenet()
+    if battlenet:
+        subprocess.Popen(f'"{battlenet}" --exec="launch {JEU_BATTLENET}"', cwd=str(battlenet.parent), close_fds=True)
+    else:
+        subprocess.Popen([str(wow)], cwd=str(forever), close_fds=True)
+    return {}
+
+
 # --- Démarrage avec Windows, priorité, notifications -----------------------------
 
 CLE_DEMARRAGE = r"Software\Microsoft\Windows\CurrentVersion\Run"
@@ -1740,6 +1769,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 "/api/retirer": lambda: retirer(donnees["id"]),
                 "/api/lier": lambda: lier(donnees["id"]),
                 "/api/ouvrir": lambda: ouvrir(donnees["id"]),
+                "/api/jouer": jouer,
                 "/api/demarrage": lambda: regler_demarrage(bool(donnees.get("actif"))),
                 "/api/quitter": demander_arret,
             }
