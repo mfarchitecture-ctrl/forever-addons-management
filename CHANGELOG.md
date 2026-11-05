@@ -1,5 +1,9 @@
 # Nouveautés de Forever Addons Manager
 
+## 0.7.4 — 5 novembre 2026
+- **Bouton Jouer** en haut de la fenêtre : il lance WoW Forever par Battle.net, avec ton compte déjà connecté.
+- L'interrupteur **Compact** passe au-dessus des boutons.
+
 ## 0.7.3 — 5 novembre 2026
 - Un addon relié au jeu par un lien vers ton dossier de code rejoint tout seul **Mes créations**.
 
