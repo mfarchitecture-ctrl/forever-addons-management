@@ -1,5 +1,8 @@
 # Nouveautés de Forever Addons Manager
 
+## 0.7.3 — 5 novembre 2026
+- Un addon relié au jeu par un lien vers ton dossier de code rejoint tout seul **Mes créations**.
+
 ## 0.7.2 — 4 novembre 2026
 - **Sécurité** : l'appli n'ouvre plus que des liens web, même si le fichier d'un addon indique autre chose.
 - **Sécurité** : la création d'un lien vers un addon perso ne passe plus par l'invite de commandes.

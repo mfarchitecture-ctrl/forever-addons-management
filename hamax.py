@@ -34,7 +34,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.7.2"
+VERSION = "0.7.3"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
@@ -268,7 +268,8 @@ def maj_dispo(addon, info, distant):
 
 def reconnaitre(scan):
     """Tout addon présent dans le jeu rejoint la collection tout seul, rangé « à tester ».
-    Sans ID CurseForge il n'aura pas de mises à jour, mais il est là. Restent à part les dossiers sans .toc."""
+    Sans ID CurseForge il n'aura pas de mises à jour, mais il est là. Restent à part les dossiers sans .toc.
+    Un dossier relié par un lien est un addon en développement : il va dans « Mes créations »."""
     registre = charger_registre()
     reclames = {d for a in registre["addons"] for d in a.get("dossiers", [])}
     for groupe in regrouper([n for n in scan if n not in reclames], scan):
@@ -281,10 +282,16 @@ def reconnaitre(scan):
         if deja:
             enregistrer_addon({**deja, "dossiers": deja.get("dossiers", []) + groupe["dossiers"]}, deja["id"])
         else:
+            lien = info.get("lien")
+            if projet.isdigit():
+                source = {"type": "curseforge", "projet": projet, "url": site}
+            elif lien:
+                source = {"type": "local", "url": info["cible"].removeprefix("\\\\?\\")}
+            else:
+                source = {"type": "page" if site else "aucune", "url": site}
             enregistrer_addon({
-                "nom": info.get("titre") or groupe["dossier"], "statut": "a_tester",
-                "description": info.get("notes", ""), "dossiers": groupe["dossiers"],
-                "source": {"type": "curseforge", "projet": projet, "url": site} if projet.isdigit() else {"type": "page" if site else "aucune", "url": site},
+                "nom": info.get("titre") or groupe["dossier"], "statut": "a_tester", "perso": lien,
+                "description": info.get("notes", ""), "dossiers": groupe["dossiers"], "source": source,
             })
 
 
