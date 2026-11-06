@@ -1,5 +1,10 @@
 # Nouveautés de Forever Addons Manager
 
+## 0.7.6 — 7 novembre 2026
+- **Tu vois ce qui s'installe** : un message reste affiché pendant l'installation d'un addon, d'un zip ou la mise à jour de l'appli.
+- **Pour trouver un addon, direction CurseForge** : « + Ajouter un addon » ouvre le site, dont le bouton Install revient dans l'appli. La recherche dans l'appli est retirée.
+- La barre du haut devient un petit filtre de ta collection, à droite des onglets.
+
 ## 0.7.5 — 7 novembre 2026
 - **Correction importante** : des mises à jour lancées en même temps pouvaient laisser un addon incomplet. Si un addon s'est mis à bugger, réinstalle-le.
 - Nouveau **Réinstaller** dans le menu « … » : répare un addon même s'il paraît à jour.

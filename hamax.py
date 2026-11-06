@@ -35,7 +35,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.7.5"
+VERSION = "0.7.6"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
@@ -114,7 +114,6 @@ def charger_config():
         "verification_auto_heures": 12,  # 0 = jamais
         "notifications": False,  # bulles de l'icône près de l'horloge (au nom de l'appli)
         "jeu_confirme": False,   # le dossier du jeu a été trouvé (Analyser) ou choisi (Localiser)
-        "curseforge_cle": "",    # clé de l'API officielle CurseForge : recherche d'addons par nom
     }
     config.update(lire_json(FICHIER_CONFIG, {}))
     return config
@@ -569,131 +568,26 @@ def installer_distant(addon_id):
     return resultat
 
 
-def ajouter_curseforge(projet, canal="release", fiche=None, cible=None):
-    """Installe un addon CurseForge et le range « à tester ».
-    fiche : infos du résultat de recherche (nom, logo, description, lien) pour un nouvel addon ;
-    cible : fiche existante à compléter (un addon « à tester » noté par son seul nom)."""
+def ajouter_curseforge(projet, canal="release"):
+    """Installe un addon CurseForge (lien « Install » du site) et le range « à tester »."""
     projet = str(projet).strip()
     if not projet.isdigit():
-        raise Erreur("L'ID de projet CurseForge est un nombre (encadré « About Project » sur la page de l'addon).")
+        raise Erreur("L'ID de projet CurseForge est un nombre.")
     registre = charger_registre()
     deja = next((a for a in registre["addons"] if str(a.get("source", {}).get("projet")) == projet), None)
-    if deja and cible and deja["id"] != cible:
-        raise Erreur(f"Déjà dans ta collection : {deja['nom']}")
-    cible = cible or (deja and deja["id"])
-    if cible:
-        # Fiche déjà là (notée sans être installée, ou désinstallée) : on la complète puis on installe
-        addon = trouver_addon(cible)
-        enregistrer_addon({**addon, **{k: v for k, v in (fiche or {}).items() if v and not addon.get(k)},
-                           "source": {"type": "curseforge", "projet": int(projet),
-                                      "url": (fiche or {}).get("url") or addon.get("source", {}).get("url", ""), "canal": canal}},
-                          cible)
-        return installer_distant(cible)
+    if deja:
+        # Fiche déjà là (désinstallée, ou à mettre à jour) : on repart d'elle
+        enregistrer_addon({**deja, "source": {"type": "curseforge", "projet": int(projet),
+                                              "url": deja.get("source", {}).get("url", ""), "canal": canal}}, deja["id"])
+        return installer_distant(deja["id"])
     distant = derniere_curseforge(projet, canal)
-    source = {"type": "curseforge", "projet": int(projet), "url": (fiche or {}).get("url", ""), "canal": canal}
+    source = {"type": "curseforge", "projet": int(projet), "url": "", "canal": canal}
     resultat = installer_zip(telecharger(distant["url_zip"]), fichier=distant, source=source)
-    if fiche:
-        nouveau = trouver_addon(resultat["id"])
-        enregistrer_addon({**nouveau, **{k: v for k, v in fiche.items() if k in ("nom", "logo", "description") and v}},
-                          resultat["id"])
     with verrou:
         maj = lire_json(FICHIER_MAJ, {})
         maj[resultat["id"]] = distant
         ecrire_json(FICHIER_MAJ, maj)
     return resultat
-
-
-def noter_a_tester(donnees):
-    """Note un addon à tester plus tard, sans l'installer : un simple nom, ou un résultat de recherche (projet, logo…)."""
-    nom = (donnees.get("nom") or "").strip()
-    if not nom:
-        raise Erreur("Il faut au moins un nom.")
-    projet = str(donnees.get("projet") or "").strip()
-    for a in charger_registre()["addons"]:
-        if (projet and str(a.get("source", {}).get("projet")) == projet) or identifiant(a["nom"]) == identifiant(nom):
-            raise Erreur(f"Déjà dans ta collection : {a['nom']} ({a['statut'].replace('_', ' ')})")
-    return enregistrer_addon({
-        "nom": nom,
-        "statut": "a_tester",
-        "description": donnees.get("description", ""),
-        "logo": donnees.get("logo", ""),
-        "source": {"type": "curseforge", "projet": projet, "url": donnees.get("url", "")} if projet.isdigit()
-        else {"type": "aucune", "url": ""},
-        "notes": donnees.get("notes", ""),
-    })
-
-
-# --- Recherche en ligne (API officielle CurseForge, clé personnelle) ---------------
-
-API_CURSEFORGE = "https://api.curseforge.com/v1"
-
-
-def rechercher_en_ligne(texte):
-    """Addons CurseForge dont le nom correspond, les plus téléchargés d'abord, marqués compatibles Forever ou non.
-    Le moteur de recherche du site refuse les programmes : il faut la clé gratuite de console.curseforge.com."""
-    texte = (texte or "").strip()
-    if len(texte) < 2:
-        return {"resultats": []}
-    # Un ID de projet ou un lien qui en contient un : pas besoin de clé, le téléchargement par ID marche
-    m = re.fullmatch(r"\d{2,9}", texte) or re.search(r"(?:addonId=|/projects/|projectId=)(\d+)", texte, re.I)
-    if m:
-        return {"resultats": [resultat_par_id(m.group(m.lastindex or 0))]}
-    config = charger_config()
-    cle = config.get("curseforge_cle")
-    if not cle:
-        raise Erreur("CLE_MANQUANTE")
-    type_jeu = int(config["curseforge_type_jeu"])
-    params = urllib.parse.urlencode({
-        "gameId": 1, "searchFilter": texte, "sortField": 2, "sortOrder": "desc", "pageSize": 12,
-    })
-    req = urllib.request.Request(f"{API_CURSEFORGE}/mods/search?{params}",
-                                 headers={"Accept": "application/json", "x-api-key": cle, "User-Agent": AGENT})
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            mods = json.load(r).get("data") or []
-    except urllib.error.HTTPError as e:
-        if e.code in (401, 403):
-            raise Erreur("La clé API CurseForge est refusée : vérifie-la dans les réglages.") from e
-        raise Erreur(f"CurseForge a répondu {e.code}") from e
-    except urllib.error.URLError as e:
-        raise Erreur(f"Pas de connexion à CurseForge ({e.reason})") from e
-
-    collection = {str(a.get("source", {}).get("projet")): a for a in charger_registre()["addons"]}
-    resultats = []
-    for m in mods:
-        types = {f.get("gameVersionTypeId") for f in m.get("latestFilesIndexes") or []}
-        deja = collection.get(str(m.get("id")))
-        resultats.append({
-            "projet": m.get("id"),
-            "nom": m.get("name", ""),
-            "description": m.get("summary", ""),
-            "logo": (m.get("logo") or {}).get("thumbnailUrl", ""),
-            "url": (m.get("links") or {}).get("websiteUrl", ""),
-            "telechargements": m.get("downloadCount", 0),
-            "auteurs": ", ".join(a.get("name", "") for a in m.get("authors") or []),
-            "forever": type_jeu in types,
-            "deja": {"id": deja["id"], "statut": deja["statut"]} if deja else None,
-        })
-    # Les addons qui ont un fichier WoW Forever d'abord
-    resultats.sort(key=lambda r: not r["forever"])
-    return {"resultats": resultats}
-
-
-def resultat_par_id(projet):
-    """Fiche d'un addon à partir de son seul ID : son dernier fichier WoW Forever (le nom vient du fichier)."""
-    collection = {str(a.get("source", {}).get("projet")): a for a in charger_registre()["addons"]}
-    deja = collection.get(str(projet))
-    try:
-        f = derniere_curseforge(projet)
-    except Erreur as e:
-        raise Erreur(f"Projet CurseForge {projet} : {e}") from e
-    nom = deja["nom"] if deja else re.sub(r"[-_ ]*v?\d.*$", "", Path(f["fichier"]).stem).replace("_", " ") or f"Projet {projet}"
-    return {
-        "projet": int(projet), "nom": nom, "logo": (deja or {}).get("logo", ""),
-        "description": f"Dernier fichier WoW Forever : {f['fichier']} ({f['date']})",
-        "url": f"https://www.curseforge.com/projects/{projet}", "telechargements": 0, "auteurs": "",
-        "forever": True, "deja": {"id": deja["id"], "statut": deja["statut"]} if deja else None,
-    }
 
 
 # --- Dossier du jeu : analyser (trouver tout seul) ou localiser (choisir) --------------
@@ -1772,10 +1666,6 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 "/api/appli/maj": installer_maj_appli,
                 "/api/appli/verifier": verifier_appli,
                 "/api/installer": lambda: installer_distant(donnees["id"]),
-                "/api/ajouter-curseforge": lambda: ajouter_curseforge(donnees["projet"], donnees.get("canal", "release"),
-                                                                      donnees.get("fiche"), donnees.get("cible")),
-                "/api/noter": lambda: noter_a_tester(donnees),
-                "/api/rechercher": lambda: rechercher_en_ligne(donnees.get("texte")),
                 "/api/jeu/analyser": analyser_jeu,
                 "/api/jeu/choisir": lambda: choisir_jeu(donnees["chemin"]),
                 "/api/jeu/parcourir": parcourir_jeu,

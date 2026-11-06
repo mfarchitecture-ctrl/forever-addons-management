@@ -56,26 +56,18 @@
   body.compact .bascule i { background: var(--or-fonce); }
   body.compact .bascule i::after { transform: translateX(13px); background: #f4e3bb; }
 
-  .recherche { display: flex; align-items: center; gap: 10px; margin: 18px 36px 0; padding: 0 6px 0 14px; height: 50px;
-                background: var(--surface); border: 1px solid var(--ligne-forte); border-radius: 7px; }
-  .recherche:focus-within { border-color: var(--or-fonce); }
-  .recherche svg { width: 19px; height: 19px; color: var(--or); flex: none; }
-  .recherche input { flex: 1; min-width: 0; height: 100%; background: none; border: 0; outline: none; font-size: 15.5px; }
+  .recherche { display: flex; align-items: center; gap: 6px; flex: none; width: 190px; height: 30px; margin-bottom: 7px; padding: 0 8px;
+                border: 1px solid transparent; border-radius: 5px; }
+  .recherche:hover { border-color: var(--ligne); }
+  .recherche:focus-within { background: var(--surface); border-color: var(--or-fonce); }
+  .recherche svg { width: 14px; height: 14px; color: var(--tres-doux); flex: none; }
+  .recherche input { flex: 1; min-width: 0; height: 100%; background: none; border: 0; outline: none; font-size: 13px; }
   .recherche input::placeholder { color: var(--tres-doux); }
-  .recherche .btn { height: 38px; }
-  .en-ligne { margin-bottom: 26px; }
-  .en-ligne h2 { margin-top: 4px; display: flex; align-items: baseline; gap: 10px; }
-  .en-ligne h2 small { font-family: "Segoe UI", sans-serif; font-size: 12.5px; color: var(--tres-doux); }
-  .en-ligne .fermer { margin-left: auto; font-family: "Segoe UI", sans-serif; font-size: 13px; background: none; border: 0; color: var(--doux); cursor: pointer; }
-  .message { padding: 14px 16px; background: var(--surface); border: 1px solid var(--ligne); border-radius: 6px; color: var(--doux); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .message b { color: var(--texte); }
-  .message .btn { margin-left: auto; }
-  .resultat .cat .forever { color: var(--vert); }
-  .resultat .cat .pas-forever { color: var(--rouge); }
   .version-pied { background: none; border: 0; color: var(--tres-doux); font-size: 12px; cursor: pointer; padding: 0 0 0 6px; white-space: nowrap; }
   .version-pied:hover { color: var(--or); }
   .carte, .rang { user-select: none; }
-  .onglets { display: flex; flex-wrap: wrap; gap: 8px 26px; margin: 18px 36px 0; border-bottom: 1px solid var(--ligne); }
+  .sous-tete { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px 20px; margin: 18px 36px 0; border-bottom: 1px solid var(--ligne); }
+  .onglets { display: flex; flex-wrap: wrap; gap: 8px 26px; min-width: 0; }
   .onglets button { background: none; border: 0; padding: 0 0 11px; color: var(--doux); font-family: var(--titre); font-size: 17px; cursor: pointer; position: relative; white-space: nowrap; }
   .onglets button:hover { color: var(--texte); }
   .onglets button[aria-selected="true"] { color: var(--or-clair); }
@@ -184,6 +176,10 @@
   .toast { background: #211c15; border: 1px solid var(--ligne-forte); border-left: 3px solid var(--vert); border-radius: 5px; padding: 10px 14px; white-space: pre-wrap; box-shadow: 0 10px 24px rgba(0,0,0,.5); }
   .toast.erreur { border-left-color: var(--rouge); }
   .toast.info { border-left-color: var(--or); }
+  .toast.encours { border-left-color: var(--or); display: flex; align-items: center; gap: 10px; }
+  .toast.encours::before { content: ""; flex: none; width: 14px; height: 14px; border: 2px solid var(--ligne-forte); border-top-color: var(--or); border-radius: 50%; animation: tourne .8s linear infinite; }
+  @keyframes tourne { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .toast.encours::before { animation: none; border-color: var(--or); } }
 
   /* Barre de progression d'une installation */
   .progres { position: relative; display: inline-block; width: 160px; height: 26px; border: 1px solid var(--ligne-forte); border-radius: 5px; overflow: hidden; background: var(--fond); vertical-align: middle; }
@@ -250,9 +246,7 @@
   .btn.discret:hover { color: var(--rouge); background: none; border-color: transparent; }
 
   /* Ajouter un addon */
-  .ajout-recherche { display: flex; gap: 8px; }
-  .ajout-recherche input { flex: 1; min-width: 0; background: var(--fond); border: 1px solid var(--ligne); border-radius: 5px; padding: 8px 10px; outline: none; }
-  .ajout-recherche input:focus { border-color: var(--or-fonce); }
+  #aj-curseforge { justify-content: center; height: 40px; width: 100%; }
   .ajout-autres { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .ajout-autres .btn { justify-content: center; height: 40px; }
   .ou { text-align: center; color: var(--tres-doux); font-size: 12.5px; }
@@ -263,7 +257,7 @@
     .tete .bascule { align-self: flex-end; }
     .tete .actions { flex-wrap: wrap; }
     .champ { flex: 1; width: auto; }
-    .onglets { margin: 14px 16px 0; }
+    .sous-tete { margin: 14px 16px 0; flex-wrap: wrap; }
     main { padding: 16px; }
     .rang, .rang-tete { grid-template-columns: 24px minmax(0, 1fr) 110px 60px; }
     .rang > :nth-child(3), .rang > :nth-child(4), .rang-tete > :nth-child(3), .rang-tete > :nth-child(4) { display: none; }
@@ -290,12 +284,13 @@
       </div>
     </div>
   </div>
-  <form class="recherche" id="f-recherche" autocomplete="off">
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="5.5"/><path d="m13 13 4 4"/></svg>
-    <input id="recherche" type="search" placeholder="Un addon dont tu as entendu parler ? Son nom ou son Project ID CurseForge, puis Entrée">
-    <button class="btn or" type="submit">Chercher</button>
-  </form>
-  <nav class="onglets" id="onglets" role="tablist"></nav>
+  <div class="sous-tete">
+    <nav class="onglets" id="onglets" role="tablist"></nav>
+    <form class="recherche" id="f-recherche" autocomplete="off">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input id="recherche" type="search" placeholder="Filtrer mes addons" aria-label="Filtrer mes addons">
+    </form>
+  </div>
 </header>
 
 
@@ -343,11 +338,8 @@
 <dialog id="d-ajouter">
   <form method="dialog" id="f-ajouter">
     <h3>Ajouter un addon</h3>
-    <p class="aide">Son nom, ou son Project ID (encadré « About Project » sur sa page CurseForge).</p>
-    <div class="ajout-recherche">
-      <input name="texte" id="aj-texte" autocomplete="off" placeholder="Nom de l'addon ou Project ID">
-      <button class="btn or" value="ok">Chercher</button>
-    </div>
+    <p class="aide">Sur le site CurseForge, le bouton Install l'envoie directement dans l'appli.</p>
+    <button class="btn or" type="button" id="aj-curseforge">Chercher sur CurseForge</button>
     <div class="ou">ou</div>
     <div class="ajout-autres">
       <button class="btn" type="button" id="aj-zip">Installer un fichier .zip</button>
@@ -385,7 +377,6 @@ let genre = null;        // filtre par genre (null = tous)
 let tri = lireLocal("tri") || "nom";
 let sens = lireLocal("sens") === "desc" ? "desc" : "asc";    // asc = A → Z, ou ancien d'abord
 let PROGRES = {};        // installations en cours : [id] = { etape, pourcent, mo }
-let enLigne = null;      // recherche CurseForge : { texte, cible, resultats | erreur }
 let recherche = "";
 let enEdition = null;
 
@@ -417,6 +408,22 @@ function toast(texte, type = "ok", duree = 5000) {
   el.textContent = texte;
   document.getElementById("toasts").append(el);
   setTimeout(() => el.remove(), type === "erreur" ? duree * 2 : duree);
+}
+
+// Message qui reste affiché tant que l'action dure : toast() le remplace une fois le résultat connu.
+function activite(texte) {
+  const el = document.createElement("div");
+  el.className = "toast encours";
+  el.setAttribute("role", "status");
+  const libelle = el.appendChild(document.createElement("span"));
+  libelle.textContent = texte;
+  document.getElementById("toasts").append(el);
+  return { texte: t => { libelle.textContent = t; }, fin: () => el.remove() };
+}
+async function enCours(texte, fn) {
+  const a = activite(texte);
+  try { return await fn(a); }
+  finally { a.fin(); }
 }
 
 async function occupe(bouton, fn) {
@@ -561,7 +568,7 @@ function rendre() {
   document.getElementById("b-version").textContent = "v" + ETAT.version;
   rendreOnglets();
 
-  let html = rendreEnLigne();
+  let html = "";
   if (!ETAT.dossier_ok) html += `<div class="alerte">L'appli ne trouve pas WoW Forever : clique sur <b>Analyser</b> sous le titre.</div>`;
   if (ETAT.maj_appli) {
     html += `<div class="avis"><span><b>${NOM} ${esc(ETAT.maj_appli.version)}</b> est disponible.</span><button class="btn petit avis-premier" id="b-notes-appli">Nouveautés</button><button class="btn or petit" id="b-maj-appli">Mettre à jour l'appli</button></div>`;
@@ -600,14 +607,13 @@ function rendre() {
         <option value="installe" ${tri === "installe" ? "selected" : ""}>Installé / pas installé</option>
       </select></label>
       <button class="btn petit" id="b-sens" title="Inverser l'ordre">${libelleSens}</button></div>`;
-    if (!liste.length) html += `<p class="vide">${recherche ? "Rien dans ta collection à ce nom : Entrée pour le chercher sur CurseForge." : onglet === "a_tester" ? "Rien à tester : tape le nom d'un addon en haut pour le noter ou l'installer." : "Rien ici pour l'instant."}</p>`;
+    if (!liste.length) html += `<p class="vide">${recherche ? "Rien dans ta collection à ce nom." : onglet === "a_tester" ? "Rien à tester : trouve un addon sur CurseForge pour l'installer." : "Rien ici pour l'instant."}</p>`;
     else html += `<div class="grille">${liste.map(carte).join("")}</div>
       <div class="tableau"><div class="rang-tete"><span></span><span>Addon</span><span>Statut</span><span>Version</span><span></span><span></span></div>${liste.map(rang).join("")}</div>`;
   }
   document.getElementById("contenu").innerHTML = html;
   const tout = document.getElementById("b-tout");
   if (tout) tout.onclick = e => toutMettreAJour(e.currentTarget);
-  brancherEnLigne();
 }
 
 // --- Menus flottants -------------------------------------------------------------
@@ -666,10 +672,10 @@ function menuAddon(a, ancre) {
 const actions = {
   ouvrir: a => occupe(null, () => api("/api/ouvrir", { id: a.id })),
   installer: a => occupe(null, () => avecProgres([a], async () => {
-    const r = await api("/api/installer", { id: a.id });
+    const r = await enCours(`Installation de ${a.nom}…`, () => api("/api/installer", { id: a.id }));
     toast(`${r.nom} installé.` + (r.sauvegarde ? "\nL'ancienne version est dans les sauvegardes." : ""));
   })),
-  lier: a => occupe(null, async () => { await api("/api/lier", { id: a.id }); toast(`${a.nom} installé.`); await charger(); }),
+  lier: a => occupe(null, async () => { await enCours(`Installation de ${a.nom}…`, () => api("/api/lier", { id: a.id })); toast(`${a.nom} installé.`); await charger(); }),
   statut: (a, s) => occupe(null, async () => { await api("/api/addon", { addon: { ...fiche(a), statut: s }, ancien_id: a.id }); await charger(); }),
   // Propose de désinstaller seulement, ou de supprimer aussi la fiche
   retirer: a => {
@@ -717,14 +723,15 @@ async function avecProgres(addons, fn) {
 async function toutMettreAJour(bouton) {
   await occupe(bouton, () => {
     const liste = ETAT.addons.filter(aMaj);
-    return avecProgres(liste, async () => {
-      for (const a of liste) {
+    return avecProgres(liste, () => enCours("Mise à jour des addons…", async suivi => {
+      for (const [i, a] of liste.entries()) {
+        suivi.texte(`Mise à jour ${i + 1}/${liste.length} : ${a.nom}…`);
         try { await api("/api/installer", { id: a.id }); toast(`${a.nom} mis à jour.`); }
         catch (e) { toast(`${a.nom} : ${e.message}`, "erreur"); }
         delete PROGRES[a.id];
         rendre();
       }
-    });
+    }));
   });
 }
 
@@ -745,14 +752,17 @@ async function mettreAJourAppli() {
   const bouton = document.getElementById("b-maj-appli");
   if (!confirm(`Installer ${NOM} ${ETAT.maj_appli.version} ?\nL'appli se ferme, se met à jour et se rouvre toute seule. Ta collection et tes notes sont conservées.`)) return;
   bouton.disabled = true;
+  const message = activite(`Mise à jour de ${NOM}…`);
   const suivi = setInterval(async () => {
     const p = (await api("/api/progression").catch(() => ({}))).appli;
-    if (p) bouton.textContent = texteProgres(p);
+    if (p) { bouton.textContent = texteProgres(p); message.texte(`Mise à jour de ${NOM} : ${texteProgres(p)}`); }
   }, 300);
   try {
     await api("/api/appli/maj", {});
     bouton.textContent = "Installation…";
+    message.texte("Installation… L'appli va se fermer et se rouvrir toute seule.");   // reste affiché jusqu'à la fermeture
   } catch (e) {
+    message.fin();
     toast(e.message, "erreur");
     bouton.disabled = false;
     bouton.textContent = "Mettre à jour l'appli";
@@ -802,7 +812,7 @@ document.getElementById("contenu").addEventListener("click", ev => {
   if (bouton.dataset.act === "note") return noteRapide(a, el);
   if (bouton.dataset.act === "installer") return actions.installer(a, bouton);
   if (bouton.dataset.act === "lier") return actions.lier(a);
-  if (bouton.dataset.act === "chercher") return chercherEnLigne(a.nom, a.id);
+  if (bouton.dataset.act === "chercher") return ouvrirCurseForge(a.nom);
 });
 
 // --- Notes ---------------------------------------------------------------------------------
@@ -895,7 +905,7 @@ function ouvrirFiche(a) {
   f.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
     d.close();
     if (b.dataset.act === "lier") actions.lier(a);
-    else if (b.dataset.act === "chercher") chercherEnLigne(a.nom, a.id);
+    else if (b.dataset.act === "chercher") ouvrirCurseForge(a.nom);
     else actions.installer(a);
   });
   d.showModal();
@@ -903,83 +913,9 @@ function ouvrirFiche(a) {
   notes.setSelectionRange(notes.value.length, notes.value.length);
 }
 
-// --- Recherche CurseForge et addons notés « à tester » --------------------------------------
-// cible : addon noté par son seul nom, que le résultat choisi viendra compléter
-async function chercherEnLigne(texte, cible = null) {
-  if (!texte) return;
-  document.getElementById("recherche").value = texte;
-  recherche = cible ? "" : texte.toLowerCase();
-  enLigne = { texte, cible, chargement: true };
-  rendre();
-  try { enLigne = { texte, cible, ...(await api("/api/rechercher", { texte })) }; }
-  catch (e) { enLigne = { texte, cible, erreur: e.message }; }
-  rendre();
-}
-
-const nombre = n => n >= 1e6 ? ns(n / 1e6) + " M" : n >= 1e3 ? ns(n / 1e3) + " k" : String(n);
-const ns = x => x.toFixed(x < 10 ? 1 : 0).replace(".", ",");
-
-function carteResultat(r, i) {
-  const a = { nom: r.nom, logo: r.logo };
-  const deja = r.deja && ETAT.addons.find(x => x.id === r.deja.id);
-  const action = deja?.installe
-    ? `<span class="st-${deja.statut}">Dans ta collection · ${LIBELLES[deja.statut]}</span>`
-    : (deja ? `<span class="st-${deja.statut}">Déjà noté · </span>`   // noté sans être installé : on peut l'installer
-        : `<button class="btn petit" data-res="plus-tard" data-i="${i}" title="Le garder dans « À tester » sans l'installer">Plus tard</button>`)
-      + `<button class="btn petit or" data-res="installer" data-i="${i}">Installer</button>`;
-  return `<article class="carte resultat">
-    <div class="haut">${logo(a)}<div style="min-width:0"><h3>${esc(r.nom)}</h3>
-      <div class="cat">${r.forever ? `<span class="forever">Fait pour Forever</span>` : `<span class="pas-forever">Pas de version Forever</span>`} · ${r.telechargements ? nombre(r.telechargements) + " téléchargements" : "projet " + r.projet}</div></div></div>
-    <p>${esc(r.description)}</p>
-    <div class="pied"><span class="ver">${esc(r.auteurs)}</span><span class="droite">${action}</span></div>
-  </article>`;
-}
-
-function rendreEnLigne() {
-  if (!enLigne) return "";
-  const t = esc(enLigne.texte);
-  const noter = enLigne.cible ? "" : `<button class="btn petit" data-res="noter">Noter « ${t} » à tester</button>`;
-  const site = `<a class="btn petit" target="_blank" rel="noopener" href="https://www.curseforge.com/wow/search?class=addons&sortBy=relevancy&gameVersionTypeId=88568&search=${encodeURIComponent(enLigne.texte)}">Chercher sur le site CurseForge ↗</a>`;
-  let corps;
-  if (enLigne.chargement) corps = `<div class="message">Recherche de « ${t} » sur CurseForge…</div>`;
-  else if (enLigne.erreur) corps = `<div class="message"><span>${ETAT?.liens_curseforge
-      ? "Cherche-le sur le site : le bouton <b>Install</b> l'installera directement dans l'appli. Ou colle ici son <b>Project ID</b>."
-      : "Cherche-le sur le site et colle ici son <b>Project ID</b> (encadré « About Project »)."}</span>${site}${noter}</div>`;
-  else if (!enLigne.resultats.length) corps = `<div class="message"><span>Rien trouvé sur CurseForge pour « ${t} ».</span>${site}${noter}</div>`;
-  else corps = `<div class="grille" style="display:grid">${enLigne.resultats.map(carteResultat).join("")}</div>
-    <div class="message" style="margin-top:12px"><span>Ce n'est aucun de ceux-là ?</span>${site}${noter}</div>`;
-  const titre = enLigne.cible ? `Quel addon est « ${t} » ?` : "Sur CurseForge";
-  return `<section class="en-ligne"><h2>${titre}<small>${enLigne.resultats ? enLigne.resultats.length + " résultats, ceux faits pour Forever d'abord" : ""}</small>
-    <button class="fermer" data-res="fermer">Fermer ✕</button></h2>${corps}</section>`;
-}
-
-function brancherEnLigne() {
-  document.querySelectorAll("[data-res]").forEach(b => b.onclick = ev => {
-    ev.stopPropagation();
-    const r = enLigne?.resultats?.[+b.dataset.i];
-    const fiche = r && { nom: r.nom, logo: r.logo, description: r.description, url: r.url };
-    if (b.dataset.res === "fermer") { enLigne = null; return rendre(); }
-    if (b.dataset.res === "noter") return occupe(b, async () => {
-      const a = await api("/api/noter", { nom: enLigne.texte });
-      toast(`« ${a.nom} » noté dans « À tester ».`);
-      enLigne = null; document.getElementById("recherche").value = ""; recherche = "";
-      await charger();
-    });
-    if (b.dataset.res === "plus-tard") return occupe(b, async () => {
-      await api("/api/noter", { ...fiche, projet: r.projet });
-      toast(`${r.nom} noté dans « À tester », à installer quand tu veux.`);
-      await chercherEnLigne(enLigne.texte, enLigne.cible);
-      await charger();
-    });
-    if (b.dataset.res === "installer") return occupe(b, async () => {
-      toast(`Téléchargement de ${r.nom}…`, "info", 3000);
-      const res = await api("/api/ajouter-curseforge", { projet: r.projet, fiche, cible: enLigne.cible || r.deja?.id });
-      toast(`${res.nom} installé, rangé dans « À tester ».`);
-      enLigne = null; document.getElementById("recherche").value = ""; recherche = "";
-      onglet = "a_tester"; ecrireLocal("onglet", onglet);
-      await charger();
-    });
-  });
+// --- Trouver un addon : sur le site CurseForge, dont le bouton Install revient dans l'appli ---
+function ouvrirCurseForge(texte = "") {
+  window.open(`https://www.curseforge.com/wow/search?class=addons&sortBy=relevancy&gameVersionTypeId=88568&search=${encodeURIComponent(texte)}`, "_blank");
 }
 
 // --- Dossier du jeu : Analyser (trouver) / Localiser (choisir) -----------------------------
@@ -1005,8 +941,8 @@ document.getElementById("b-jeu").onclick = e => {
 addEventListener("focus", () => { if (ETAT && !document.activeElement?.classList.contains("note-champ")) charger(); });
 
 // --- En-tête ---------------------------------------------------------------------------
-document.getElementById("recherche").oninput = e => { recherche = e.target.value.trim().toLowerCase(); if (!recherche) enLigne = null; rendre(); };
-document.getElementById("f-recherche").onsubmit = e => { e.preventDefault(); chercherEnLigne(document.getElementById("recherche").value.trim()); };
+document.getElementById("recherche").oninput = e => { recherche = e.target.value.trim().toLowerCase(); rendre(); };
+document.getElementById("f-recherche").onsubmit = e => e.preventDefault();
 addEventListener("keydown", e => {
   if ((e.ctrlKey && e.key.toLowerCase() === "k") || (e.key === "/" && !/input|textarea|select/i.test(document.activeElement.tagName))) {
     e.preventDefault(); document.getElementById("recherche").focus();
@@ -1026,14 +962,8 @@ document.getElementById("b-verifier").onclick = e => occupe(e.currentTarget, asy
 });
 
 const fenetreAjout = document.getElementById("d-ajouter");
-document.getElementById("b-ajouter").onclick = () => { document.getElementById("f-ajouter").reset(); fenetreAjout.showModal(); };
-document.getElementById("f-ajouter").onsubmit = e => {
-  e.preventDefault();
-  const texte = document.getElementById("aj-texte").value.trim();
-  if (!texte) return;
-  fenetreAjout.close("ok");
-  chercherEnLigne(texte);
-};
+document.getElementById("b-ajouter").onclick = () => fenetreAjout.showModal();
+document.getElementById("aj-curseforge").onclick = () => { fenetreAjout.close("annuler"); ouvrirCurseForge(); };
 document.getElementById("aj-zip").onclick = () => { fenetreAjout.close("annuler"); choisirZip(null); };
 document.getElementById("aj-creation").onclick = () => {
   fenetreAjout.close("annuler");
@@ -1085,7 +1015,7 @@ async function envoyerZip(fichier, id) {
   if (!fichier.name.toLowerCase().endsWith(".zip")) return toast("Il faut un fichier .zip", "erreur");
   await occupe(null, async () => {
     const q = new URLSearchParams({ nom: fichier.name, ...(id ? { id } : {}) });
-    const r = await api("/api/installer-zip?" + q, await fichier.arrayBuffer(), true);
+    const r = await enCours(`Installation de ${fichier.name}…`, async () => api("/api/installer-zip?" + q, await fichier.arrayBuffer(), true));
     toast(`${r.nom} installé depuis ${fichier.name}` + (r.remplaces.length ? `\nL'ancienne version est dans les sauvegardes.` : ""));
     await charger();
   });
