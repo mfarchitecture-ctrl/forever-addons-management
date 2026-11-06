@@ -56,9 +56,8 @@
   body.compact .bascule i { background: var(--or-fonce); }
   body.compact .bascule i::after { transform: translateX(13px); background: #f4e3bb; }
 
-  .recherche { display: flex; align-items: center; gap: 6px; flex: none; width: 190px; height: 30px; margin-bottom: 7px; padding: 0 8px;
-                border: 1px solid transparent; border-radius: 5px; }
-  .recherche:hover { border-color: var(--ligne); }
+  .recherche { display: flex; align-items: center; gap: 6px; width: 210px; height: 28px; padding: 0 8px; border: 1px solid var(--ligne); border-radius: 5px; }
+  .recherche:hover { border-color: var(--ligne-forte); }
   .recherche:focus-within { background: var(--surface); border-color: var(--or-fonce); }
   .recherche svg { width: 14px; height: 14px; color: var(--tres-doux); flex: none; }
   .recherche input { flex: 1; min-width: 0; height: 100%; background: none; border: 0; outline: none; font-size: 13px; }
@@ -66,8 +65,7 @@
   .version-pied { background: none; border: 0; color: var(--tres-doux); font-size: 12px; cursor: pointer; padding: 0 0 0 6px; white-space: nowrap; }
   .version-pied:hover { color: var(--or); }
   .carte, .rang { user-select: none; }
-  .sous-tete { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px 20px; margin: 18px 36px 0; border-bottom: 1px solid var(--ligne); }
-  .onglets { display: flex; flex-wrap: wrap; gap: 8px 26px; min-width: 0; }
+  .onglets { display: flex; flex-wrap: wrap; gap: 8px 26px; margin: 18px 36px 0; border-bottom: 1px solid var(--ligne); }
   .onglets button { background: none; border: 0; padding: 0 0 11px; color: var(--doux); font-family: var(--titre); font-size: 17px; cursor: pointer; position: relative; white-space: nowrap; }
   .onglets button:hover { color: var(--texte); }
   .onglets button[aria-selected="true"] { color: var(--or-clair); }
@@ -247,6 +245,8 @@
 
   /* Ajouter un addon */
   #aj-curseforge { justify-content: center; height: 40px; width: 100%; }
+  .ajout-liens { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .ajout-liens .case { flex: none; }
   .ajout-autres { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .ajout-autres .btn { justify-content: center; height: 40px; }
   .ou { text-align: center; color: var(--tres-doux); font-size: 12.5px; }
@@ -257,7 +257,7 @@
     .tete .bascule { align-self: flex-end; }
     .tete .actions { flex-wrap: wrap; }
     .champ { flex: 1; width: auto; }
-    .sous-tete { margin: 14px 16px 0; flex-wrap: wrap; }
+    .onglets { margin: 14px 16px 0; }
     main { padding: 16px; }
     .rang, .rang-tete { grid-template-columns: 24px minmax(0, 1fr) 110px 60px; }
     .rang > :nth-child(3), .rang > :nth-child(4), .rang-tete > :nth-child(3), .rang-tete > :nth-child(4) { display: none; }
@@ -284,15 +284,17 @@
       </div>
     </div>
   </div>
-  <div class="sous-tete">
-    <nav class="onglets" id="onglets" role="tablist"></nav>
-    <form class="recherche" id="f-recherche" autocomplete="off">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="5.5"/><path d="m13 13 4 4"/></svg>
-      <input id="recherche" type="search" placeholder="Filtrer mes addons" aria-label="Filtrer mes addons">
-    </form>
-  </div>
+  <nav class="onglets" id="onglets" role="tablist"></nav>
 </header>
 
+
+<!-- La barre garde sa saisie et son curseur : rendre() la replace à côté de « Filtrer » sans la recréer. -->
+<div hidden id="reserve-recherche">
+  <form class="recherche" id="f-recherche" autocomplete="off">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="5.5"/><path d="m13 13 4 4"/></svg>
+    <input id="recherche" type="search" placeholder="Rechercher un addon" aria-label="Rechercher dans mes addons">
+  </form>
+</div>
 
 <main id="contenu"><p class="vide">Chargement…</p></main>
 
@@ -338,7 +340,10 @@
 <dialog id="d-ajouter">
   <form method="dialog" id="f-ajouter">
     <h3>Ajouter un addon</h3>
-    <p class="aide">Sur le site CurseForge, le bouton Install l'envoie directement dans l'appli.</p>
+    <div class="ajout-liens">
+      <p class="aide" id="aj-liens-texte"></p>
+      <label class="case" title="Ouvrir les liens « Install » du site CurseForge"><input type="checkbox" id="aj-liens" aria-label="Ouvrir les liens « Install » du site CurseForge"></label>
+    </div>
     <button class="btn or" type="button" id="aj-curseforge">Chercher sur CurseForge</button>
     <div class="ou">ou</div>
     <div class="ajout-autres">
@@ -597,8 +602,9 @@ function rendre() {
     const signe = sens === "asc" ? 1 : -1;
     const liste = dansOnglet.filter(a => !genre || genreDe(a) === genre).sort((x, y) => (aMaj(y) - aMaj(x)) || signe * ordre(x, y));
     const libelleSens = sens === "asc" ? "↑ Croissant" : "↓ Décroissant";
-    if (dansOnglet.length) html += `<div class="filtres">
+    if (dansOnglet.length || recherche) html += `<div class="filtres">
       <button class="btn petit" id="b-filtre"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 4h14l-5.5 6.5V16l-3-1.5v-4z"/></svg>Filtrer</button>
+      <span id="place-recherche"></span>
       ${genre ? `<button class="btn petit genre-actif" data-genre="" title="Retirer ce filtre">${esc(genre)} ✕</button>` : ""}
       <label class="tri">Trier par <select id="tri">
         <option value="nom" ${tri === "nom" ? "selected" : ""}>Nom</option>
@@ -611,7 +617,13 @@ function rendre() {
     else html += `<div class="grille">${liste.map(carte).join("")}</div>
       <div class="tableau"><div class="rang-tete"><span></span><span>Addon</span><span>Statut</span><span>Version</span><span></span><span></span></div>${liste.map(rang).join("")}</div>`;
   }
+  const barre = document.getElementById("f-recherche");
+  const champ = document.getElementById("recherche");
+  const avaitFocus = document.activeElement === champ;
+  document.getElementById("reserve-recherche").append(barre);
   document.getElementById("contenu").innerHTML = html;
+  document.getElementById("place-recherche")?.replaceWith(barre);
+  if (avaitFocus) champ.focus();
   const tout = document.getElementById("b-tout");
   if (tout) tout.onclick = e => toutMettreAJour(e.currentTarget);
 }
@@ -962,7 +974,23 @@ document.getElementById("b-verifier").onclick = e => occupe(e.currentTarget, asy
 });
 
 const fenetreAjout = document.getElementById("d-ajouter");
-document.getElementById("b-ajouter").onclick = () => fenetreAjout.showModal();
+function montrerLiensCurseForge() {
+  const actif = !!ETAT?.liens_curseforge;
+  document.getElementById("aj-liens").checked = actif;
+  document.getElementById("aj-liens-texte").textContent = actif
+    ? "Sur le site CurseForge, le bouton Install l'envoie directement dans l'appli."
+    : "Sur le site CurseForge, le bouton Install ouvre l'appli CurseForge.";
+}
+async function reglerLiensCurseForge(actif) {
+  const r = await api("/api/liens-curseforge", { actif });
+  toast(r.liens_curseforge ? "Le bouton Install du site CurseForge installe maintenant dans l'appli." : "Les liens CurseForge sont rendus à l'appli CurseForge.");
+  await charger();
+}
+document.getElementById("aj-liens").onchange = e => occupe(null, async () => {
+  try { await reglerLiensCurseForge(e.target.checked); }
+  finally { montrerLiensCurseForge(); }
+});
+document.getElementById("b-ajouter").onclick = () => { montrerLiensCurseForge(); fenetreAjout.showModal(); };
 document.getElementById("aj-curseforge").onclick = () => { fenetreAjout.close("annuler"); ouvrirCurseForge(); };
 document.getElementById("aj-zip").onclick = () => { fenetreAjout.close("annuler"); choisirZip(null); };
 document.getElementById("aj-creation").onclick = () => {
@@ -993,9 +1021,7 @@ document.getElementById("b-reglages").onclick = e => ouvrirMenu(e.currentTarget,
       await charger();
     }) },
   { texte: "Ouvrir les liens « Install » du site CurseForge", coche: !!ETAT?.liens_curseforge, action: () => occupe(null, async () => {
-      const r = await api("/api/liens-curseforge", { actif: !ETAT.liens_curseforge });
-      toast(r.liens_curseforge ? "Le bouton Install du site CurseForge installe maintenant dans l'appli." : "Les liens CurseForge sont rendus à l'appli CurseForge.");
-      await charger();
+      await reglerLiensCurseForge(!ETAT.liens_curseforge);
     }) },
   { texte: "Relire le dossier AddOns", action: () => charger() },
   { texte: "Nouveautés de la version", action: () => montrerNouveautes() },
