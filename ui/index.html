@@ -653,6 +653,10 @@ function menuAddon(a, ancre) {
   const el = [];
   if (lienSource(a)) el.push({ texte: "Page de l'addon", action: () => window.open(lienSource(a), "_blank") });
   if (a.installe) el.push({ texte: "Ouvrir le dossier", action: () => actions.ouvrir(a) });
+  // Répare un addon abîmé même s'il paraît à jour ; un addon relié par un lien n'a rien à retélécharger.
+  if (a.installe && !a.perso && distant(a)) {
+    el.push({ texte: "Réinstaller", action: () => actions.installer(a) });
+  }
   if (el.length) el.push("-");
   el.push({ texte: a.installe ? "Désinstaller" : `Supprimer de ${NOM}`, danger: true, action: () => actions.retirer(a) });
   ouvrirMenu(ancre, el);

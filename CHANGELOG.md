@@ -1,5 +1,9 @@
 # Nouveautés de Forever Addons Manager
 
+## 0.7.5 — 7 novembre 2026
+- **Correction importante** : des mises à jour lancées en même temps pouvaient laisser un addon incomplet. Si un addon s'est mis à bugger, réinstalle-le.
+- Nouveau **Réinstaller** dans le menu « … » : répare un addon même s'il paraît à jour.
+
 ## 0.7.4 — 5 novembre 2026
 - **Bouton Jouer** en haut de la fenêtre : il lance WoW Forever par Battle.net, avec ton compte déjà connecté.
 - L'interrupteur **Compact** passe au-dessus des boutons.

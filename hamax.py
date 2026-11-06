@@ -24,6 +24,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import urllib.error
 import urllib.parse
@@ -34,7 +35,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.7.4"
+VERSION = "0.7.5"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
@@ -910,8 +911,17 @@ def dossiers_du_zip(zf):
     return resultat
 
 
+# Une installation à la fois : deux lots lancés ensemble ne doivent jamais se marcher dessus.
+verrou_installation = threading.Lock()
+
+
 def installer_zip(octets, addon_id=None, nom_fichier="", fichier=None, source=None):
     """Installe les addons d'un zip. Les dossiers remplacés partent dans sauvegardes/."""
+    with verrou_installation:
+        return _installer_zip(octets, addon_id, nom_fichier, fichier, source)
+
+
+def _installer_zip(octets, addon_id, nom_fichier, fichier, source):
     base = dossier_addons()
     try:
         zf = zipfile.ZipFile(io.BytesIO(octets))
@@ -927,7 +937,10 @@ def installer_zip(octets, addon_id=None, nom_fichier="", fichier=None, source=No
             raise Erreur(f"« {nom} » est un lien vers un addon perso : je n'y touche pas.")
 
     horodatage = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    tmp = DOSSIER_SAUVEGARDES / "_tmp" / horodatage
+    # Dossier propre à cette installation : un nom à la seconde près serait partagé, et le premier
+    # à finir effacerait les fichiers de l'autre.
+    (DOSSIER_SAUVEGARDES / "_tmp").mkdir(parents=True, exist_ok=True)
+    tmp = Path(tempfile.mkdtemp(prefix=horodatage + "_", dir=DOSSIER_SAUVEGARDES / "_tmp"))
     try:
         for info in zf.infolist():
             p = info.filename.replace("\\", "/")
@@ -970,6 +983,10 @@ def installer_zip(octets, addon_id=None, nom_fichier="", fichier=None, source=No
             addon_id_final = addon["id"]
 
         sauvegarde = DOSSIER_SAUVEGARDES / addon["id"] / horodatage
+        rang = 2
+        while sauvegarde.exists():   # déjà une sauvegarde de cet addon dans la même seconde
+            sauvegarde = DOSSIER_SAUVEGARDES / addon["id"] / f"{horodatage}_{rang}"
+            rang += 1
         remplaces = []
         for nom in noms:
             dest = base / nom
