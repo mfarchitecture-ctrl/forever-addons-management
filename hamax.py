@@ -16,6 +16,7 @@ fenêtre, en priorité basse : aucun calcul tant qu'on ne s'en sert pas, sauf un
 vérification des mises à jour toutes les N heures (notification Windows si besoin).
 """
 import _winapi
+import ctypes
 import hashlib
 import io
 import json
@@ -35,7 +36,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.7.7"
+VERSION = "0.7.8"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
@@ -48,6 +49,7 @@ RESSOURCES = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 # Données (registre, config, sauvegardes) : à part du programme, pour qu'une mise à jour n'y touche jamais.
 RACINE = Path(os.environ.get("LOCALAPPDATA", Path.home())) / NOM if FIGE else Path(__file__).resolve().parent
 FICHIER_CONFIG = RACINE / "config.json"
+FICHIER_FENETRE = RACINE / "fenetre.json"   # taille et position : écrit par le seul processus --fenetre
 FICHIER_REGISTRE = RACINE / "registre" / "addons.json"
 FICHIER_MAJ = RACINE / "registre" / "maj.json"
 DOSSIER_SAUVEGARDES = RACINE / "sauvegardes"
@@ -1376,6 +1378,75 @@ def _suivre_echelle(hwnd):
     form.BeginInvoke(Action(lambda: ajuster(True)))   # au cas où elle s'ouvre déjà sur un autre écran
 
 
+class PlacementFenetre(ctypes.Structure):
+    """WINDOWPLACEMENT de Windows : position hors agrandissement et état de la fenêtre."""
+    _fields_ = [("length", ctypes.c_uint), ("flags", ctypes.c_uint), ("showCmd", ctypes.c_uint),
+                ("ptMinPosition", ctypes.c_long * 2), ("ptMaxPosition", ctypes.c_long * 2),
+                ("rcNormalPosition", ctypes.c_long * 4)]
+
+
+_placement_ecrit = None
+
+
+def _enregistrer_placement(*_):
+    """Note la taille, la position et l'agrandissement de la fenêtre, en pixels réels.
+    Appelé à chaque fin de déplacement, pas seulement à la fermeture : « Quitter » arrête la fenêtre net."""
+    global _placement_ecrit
+    try:
+        from ctypes import wintypes
+        p = PlacementFenetre(length=ctypes.sizeof(PlacementFenetre))
+        hwnd = wintypes.HWND(int(FENETRE.native.Handle.ToInt64()))
+        if not ctypes.windll.user32.GetWindowPlacement(hwnd, ctypes.byref(p)):
+            return
+        # Réduite dans la barre des tâches, showCmd vaut 2 et flags dit si elle était agrandie avant
+        placement = {"rect": list(p.rcNormalPosition), "agrandie": p.showCmd == 3 or (p.showCmd == 2 and bool(p.flags & 2))}
+        with verrou:
+            if placement != _placement_ecrit:
+                ecrire_json(FICHIER_FENETRE, placement)
+                _placement_ecrit = placement
+    except Exception as e:  # noqa: BLE001 — une position non retenue ne doit pas gêner la fermeture
+        print(f"{maintenant()} position de la fenêtre : {e}")
+
+
+def _restaurer_placement():
+    """Remet la fenêtre où elle était, avant son affichage. Si cet écran n'est plus là, elle s'ouvre comme la première fois."""
+    global _placement_ecrit
+    try:
+        from ctypes import wintypes
+
+        from System.Drawing import Size
+        from System.Windows.Forms import FormStartPosition, FormWindowState
+        placement = lire_json(FICHIER_FENETRE, None)
+        if not placement:
+            return                              # première ouverture : centrée sur l'écran principal
+        gauche, haut, droite, bas = (int(v) for v in placement["rect"])
+        user32 = ctypes.windll.user32
+        user32.MonitorFromRect.restype = wintypes.HMONITOR
+        rect = wintypes.RECT(gauche, haut, droite, bas)
+        if droite <= gauche or bas <= haut or not user32.MonitorFromRect(ctypes.byref(rect), 0):   # 0 : aucun écran
+            return
+        form = FENETRE.native
+        form.StartPosition = FormStartPosition.Manual
+        # Le minimum vaut pour l'échelle de l'écran principal : il agrandirait la fenêtre sur un écran à plus
+        # petite échelle. _suivre_echelle remet le bon juste après l'affichage.
+        form.MinimumSize = Size(0, 0)
+        p = PlacementFenetre(length=ctypes.sizeof(PlacementFenetre), showCmd=0)   # SW_HIDE : pas encore affichée
+        p.rcNormalPosition[:] = [gauche, haut, droite, bas]
+        user32.SetWindowPlacement(wintypes.HWND(int(form.Handle.ToInt64())), ctypes.byref(p))
+        if placement.get("agrandie"):
+            form.WindowState = FormWindowState.Maximized
+        _placement_ecrit = placement
+    except Exception as e:  # noqa: BLE001 — au pire elle s'ouvre centrée
+        print(f"{maintenant()} position de la fenêtre : {e}")
+
+
+def _suivre_placement():
+    FENETRE.native.ResizeEnd += _enregistrer_placement   # fin d'un déplacement ou d'un redimensionnement
+    FENETRE.events.maximized += _enregistrer_placement
+    FENETRE.events.restored += _enregistrer_placement
+    FENETRE.events.closing += _enregistrer_placement
+
+
 def limiter_liens_externes():
     """Les liens viennent en partie des fichiers .toc des addons : seuls http et https sortent de la fenêtre.
     Sinon Windows lancerait le programme lié à n'importe quel protocole (calculator:, search-ms:…)."""
@@ -1400,6 +1471,8 @@ def fenetre_seule():
     DOSSIER_WEBVIEW.mkdir(parents=True, exist_ok=True)
     FENETRE = webview.create_window(NOM, adresse_locale(), width=1280, height=880, min_size=TAILLE_MINI,
                                     background_color="#0f0d0a")
+    FENETRE.events.before_show += _restaurer_placement
+    FENETRE.events.before_show += _suivre_placement
     FENETRE.events.shown += _apres_affichage
     webview.start(gui="edgechromium", private_mode=False, storage_path=str(DOSSIER_WEBVIEW))
 

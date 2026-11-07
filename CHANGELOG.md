@@ -1,5 +1,8 @@
 # Nouveautés de Forever Addons Manager
 
+## 0.7.8 — 7 novembre 2026
+- **La fenêtre garde sa place** : taille, position, écran et agrandissement sont retenus quand tu la fermes, et elle revient au même endroit depuis la barre système.
+
 ## 0.7.7 — 7 novembre 2026
 - La recherche dans ta collection passe à côté de **Filtrer**.
 - « + Ajouter un addon » : une case pour activer ou couper les liens **Install** du site CurseForge, comme dans ⚙.
