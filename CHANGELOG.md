@@ -1,5 +1,16 @@
 # Nouveautés de Forever Addons Manager
 
+## 0.7.9 — 9 novembre 2026
+- **Nouvelle fiche d'addon** : une bannière aux couleurs de son logo, le statut en couleur, les infos utiles visibles d'un coup d'œil et une note façon post-it.
+- **Onglet Rechercher ↗** à droite des onglets : il ouvre la recherche d'addons WoW Forever sur CurseForge, dans ton navigateur.
+- **Bouton Mon dossier addons** en haut : il ouvre le dossier AddOns du jeu dans l'Explorateur.
+- **Les icônes des addons** : sans logo CurseForge, chaque addon montre l'icône qu'il fournit lui-même, au lieu de ses initiales.
+- **Un grand bouton Jouer**, bleu comme celui de Battle.net.
+- **Quelques animations discrètes** : les cartes arrivent en cascade, un bandeau de mise à jour s'illumine quand il apparaît, les fenêtres et messages glissent en douceur.
+- **Sécurité** : un bouton **Install** du site CurseForge te demande maintenant confirmation dans l'appli avant d'installer quoi que ce soit.
+- **Sécurité** : seule la fenêtre de l'appli peut lui parler. Les autres programmes et comptes du PC, comme les sites web, sont refusés.
+- **Sécurité** : un zip qui dépasserait 1 Go une fois décompressé est refusé.
+
 ## 0.7.8 — 7 novembre 2026
 - **La fenêtre garde sa place** : taille, position, écran et agrandissement sont retenus quand tu la fermes, et elle revient au même endroit depuis la barre système.
 

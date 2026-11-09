@@ -48,6 +48,19 @@
   .btn:disabled { opacity: .55; cursor: progress; }
   .btn.or { background: var(--or); border-color: var(--or); color: #1d150a; font-weight: 600; }
   .btn.or:hover { background: var(--or-clair); }
+  .btn { transition: background .15s, border-color .15s, box-shadow .2s, transform .12s; }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  /* Jouer : le bleu du bouton de Battle.net, seul à trancher avec le doré de l'appli */
+  .btn.jouer { height: 46px; min-width: 168px; padding: 0 28px; justify-content: center; border-radius: 6px; position: relative; overflow: hidden;
+    font-size: 19px; font-weight: 700; color: #fff; letter-spacing: .01em;
+    background: #1472d8; border-color: #2a86ec;
+    box-shadow: 0 6px 22px rgba(20,114,216,.32); }
+  .btn.jouer:hover { background: #1c80ec; border-color: #4a9cf3; transform: translateY(-1px);
+    box-shadow: 0 10px 30px rgba(28,128,236,.45); }
+  .btn.jouer:active:not(:disabled) { transform: translateY(0) scale(.97); }
+  .btn.jouer::after { content: ""; position: absolute; inset: 0; pointer-events: none; transform: translateX(-120%);
+    background: linear-gradient(110deg, transparent 35%, rgba(255,250,235,.5) 50%, transparent 65%); animation: reflet 7s ease-in-out 1.5s infinite; }
+  @keyframes reflet { 0%, 80% { transform: translateX(-120%); } 95%, 100% { transform: translateX(120%); } }
   .btn.petit { height: 28px; padding: 0 11px; font-size: 13px; }
   .btn.icone { width: 34px; padding: 0; justify-content: center; }
   .bascule { display: inline-flex; align-items: center; gap: 8px; color: var(--doux); font-size: 13px; cursor: pointer; user-select: none; }
@@ -72,6 +85,8 @@
   .onglets button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--or); }
   .onglets .n { margin-left: 5px; font-family: "Segoe UI", sans-serif; font-size: 12px; color: var(--tres-doux); }
   .onglets .n.maj { color: var(--or); font-weight: 600; }
+  .onglets .externe span { margin-left: 3px; font-size: 14px; color: var(--tres-doux); }
+  .onglets .externe:hover span { color: var(--or); }
 
   main { padding: 18px 36px 40px; }
   .avis { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 18px; border-left: 3px solid var(--or); background: var(--surface); border-radius: 0 5px 5px 0; }
@@ -92,6 +107,8 @@
   .absent:hover .logo { filter: none; }
   .carte .haut { display: flex; gap: 13px; align-items: center; min-width: 0; }
   .logo { width: 62px; height: 62px; border-radius: 5px; flex: none; object-fit: cover; background: #241f18; }
+  .logo-toc { object-fit: contain; padding: 6px; background: radial-gradient(circle at 50% 40%, #2c261d, #1c1813); }
+  .rang .logo-toc { padding: 1px; }
   .logo-txt { display: grid; place-items: center; font-weight: 700; color: #fff; font-size: 16px; }
   .carte h3 { margin: 0; font-family: var(--titre); font-weight: 500; font-size: 20px; line-height: 1.1; color: var(--texte); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .carte .titres { min-width: 0; flex: 1; }
@@ -156,12 +173,6 @@
   .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
   .pied-fenetre { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
   .aide { margin: 0; font-size: 13px; color: var(--doux); }
-  .fiche-tete { display: flex; gap: 14px; align-items: center; }
-  .fiche-tete .logo { width: 64px; height: 64px; }
-  .fiche-infos { display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px; font-size: 13.5px; }
-  .fiche-infos dt { color: var(--tres-doux); }
-  .fiche-infos dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-  .fiche-infos code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; color: var(--doux); }
   .journal { max-height: min(60vh, 520px); overflow: auto; }
   .journal h4 { margin: 16px 0 6px; font-family: var(--titre); font-weight: 500; font-size: 19px; color: var(--or); }
   .journal h4 small { font-family: "Segoe UI", sans-serif; font-size: 12.5px; color: var(--tres-doux); margin-left: 8px; }
@@ -178,6 +189,29 @@
   .toast.encours::before { content: ""; flex: none; width: 14px; height: 14px; border: 2px solid var(--ligne-forte); border-top-color: var(--or); border-radius: 50%; animation: tourne .8s linear infinite; }
   @keyframes tourne { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .toast.encours::before { animation: none; border-color: var(--or); } }
+
+  /* --- Animations légères ------------------------------------------------------ */
+  @keyframes monte { from { opacity: 0; transform: translateY(8px); } }
+  @keyframes fondu { from { opacity: 0; } }
+  @keyframes glisse { from { opacity: 0; transform: translateX(18px); } }
+  @keyframes surgit { from { opacity: 0; transform: translateY(-6px) scale(.985); } }
+  @keyframes lueur { 50% { box-shadow: 0 0 0 1px rgba(217,180,106,.35), 0 0 22px rgba(217,180,106,.18); } }
+  @keyframes battement { 50% { opacity: .55; } }
+  /* À l'ouverture et au changement d'onglet seulement (pas à chaque rafraîchissement) */
+  .grille.entree .carte { animation: monte .34s cubic-bezier(.2,.7,.3,1) both; }
+  .tableau.entree .rang { animation: fondu .3s ease-out both; }
+  .carte { transition: border-color .15s, background .15s, transform .18s, box-shadow .18s; }
+  .carte:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.35); }
+  /* Une mise à jour qui vient d'arriver : le bandeau descend et s'illumine deux fois */
+  .avis.nouveau { animation: surgit .4s cubic-bezier(.2,.7,.3,1) both, lueur 1.4s ease-in-out .4s 2; }
+  .onglets .n.maj { animation: battement 2.4s ease-in-out infinite; }
+  .toast { animation: glisse .28s cubic-bezier(.2,.7,.3,1); }
+  dialog[open] { animation: surgit .22s cubic-bezier(.2,.7,.3,1); }
+  dialog[open]::backdrop { animation: fondu .22s ease-out; }
+  @media (prefers-reduced-motion: reduce) {
+    .grille.entree .carte, .tableau.entree .rang, .avis.nouveau, .onglets .n.maj, .toast, dialog[open], dialog[open]::backdrop, .btn.jouer::after { animation: none; }
+    .carte:hover, .btn.jouer:hover { transform: none; }
+  }
 
   /* Barre de progression d'une installation */
   .progres { position: relative; display: inline-block; width: 160px; height: 26px; border: 1px solid var(--ligne-forte); border-radius: 5px; overflow: hidden; background: var(--fond); vertical-align: middle; }
@@ -217,22 +251,49 @@
   .rang-fin { display: flex; justify-content: flex-end; }
 
   /* Fiche */
-  .fiche-ligne { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13.5px; color: var(--doux); }
   .fiche-desc { margin: 0; font-size: 14px; color: #c7bcaa; line-height: 1.45; }
-  .fiche-statut { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--ligne); border-radius: 6px; overflow: hidden; }
-  .fiche-statut button { background: none; border: 0; border-left: 1px solid var(--ligne); padding: 7px 8px; font-size: 13.5px; color: var(--tres-doux); text-decoration: none; cursor: pointer; }
-  .fiche-statut button:first-child { border-left: 0; }
-  .fiche-statut button:hover { background: var(--survol); }
-  .fiche-statut button.st-a_tester[aria-pressed="true"] { color: var(--bleu); }
-  .fiche-statut button.st-valide[aria-pressed="true"] { color: var(--vert); }
-  .fiche-statut button.st-rejete[aria-pressed="true"] { color: var(--texte); }
-  .fiche-statut button[aria-pressed="true"] { background: var(--surface-2); font-weight: 600; }
-  .fiche-note { display: grid; gap: 5px; }
-  .fiche-note-tete { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; color: var(--doux); }
-  .fiche-note textarea { background: var(--fond); border: 1px solid var(--ligne); border-radius: 5px; padding: 8px 10px; color: var(--texte); font-size: 14px; outline: none; font-family: inherit; }
-  .fiche-note textarea:focus { border-color: var(--or-fonce); }
-  .fiche-details summary { cursor: pointer; color: var(--doux); font-size: 13px; }
-  .fiche-details[open] summary { margin-bottom: 10px; }
+  /* Nouvelle fiche : bannière aux couleurs du logo, statut en couleur, infos visibles, note en post-it */
+  #d-fiche { width: min(600px, calc(100vw - 32px)); overflow-x: hidden; }
+  #f-fiche { padding: 0; display: block; }
+  .fiche-banniere { --teinte: 35; --sat: 30%; height: 96px; position: relative; border-bottom: 1px solid hsl(var(--teinte) var(--sat) 22%);
+    background: radial-gradient(circle at 16% 70%, hsl(var(--teinte) var(--sat) 38% / .75), transparent 60%), hsl(var(--teinte) var(--sat) 11%);
+    transition: background .4s, border-color .4s; }
+  .fiche-x { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border: 0; border-radius: 6px; background: rgba(0,0,0,.35); color: #ddd2bf; cursor: pointer; font-size: 14px; }
+  .fiche-x:hover { background: rgba(0,0,0,.55); color: #fff; }
+  .fiche-tete { display: flex; gap: 16px; align-items: flex-end; padding: 0 24px; margin-top: -44px; position: relative; }
+  .fiche-tete .logo { width: 92px; height: 92px; border-radius: 12px; border: 3px solid var(--surface); font-size: 26px; }
+  .fiche-tete .logo-toc { padding: 10px; }
+  .fiche-titres { min-width: 0; padding-bottom: 3px; }
+  .fiche-titres h3 { font-size: 30px; line-height: 1; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fiche-puces { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .puce { padding: 1px 9px; border-radius: 999px; background: var(--surface-2); color: var(--doux); font-size: 12px; line-height: 20px; text-decoration: none; }
+  .puce.etat-ligne { gap: 5px; }
+  .fiche-corps { padding: 20px 24px 18px; display: grid; gap: 16px; }
+  .fiche-statut { display: flex; gap: 8px; }
+  .fiche-statut button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; height: 38px; border-radius: 7px; border: 1px solid var(--ligne);
+    background: none; color: var(--doux); font-size: 14px; text-decoration: none; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+  .fiche-statut button i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .8; }
+  .fiche-statut button:hover { border-color: var(--ligne-forte); color: var(--texte); }
+  .fiche-statut .st-a_tester i { background: var(--bleu); } .fiche-statut .st-valide i { background: var(--vert); } .fiche-statut .st-rejete i { background: var(--rouge); }
+  .fiche-statut .st-a_tester[aria-pressed="true"] { color: var(--bleu); border-color: var(--bleu); background: #18222e; font-weight: 600; }
+  .fiche-statut .st-valide[aria-pressed="true"] { color: var(--vert); border-color: var(--vert); background: #1b2717; font-weight: 600; }
+  .fiche-statut .st-rejete[aria-pressed="true"] { color: var(--rouge); border-color: var(--rouge); background: #2c1813; font-weight: 600; }
+  .fiche-alerte { padding: 8px 12px; border-left: 3px solid var(--or); background: #221d13; color: var(--or); font-size: 13px; }
+  .fiche-cases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .fiche-cases > div { background: var(--surface-2); border-radius: 7px; padding: 8px 12px; min-width: 0; }
+  .fiche-cases small { display: block; font-size: 11.5px; color: var(--tres-doux); margin-bottom: 1px; }
+  .fiche-cases span, .fiche-cases a { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
+  .fiche-cases a svg { width: 12px; height: 12px; display: inline; vertical-align: -1px; }
+  .fiche-note { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: #221d13; border: 1px solid #3a2f1c; border-left: 3px solid var(--or); border-radius: 0 7px 7px 0; cursor: text; }
+  .fiche-note > svg { width: 15px; height: 15px; flex: none; margin-top: 3px; color: var(--or); }
+  .fiche-note textarea { flex: 1; min-width: 0; background: none; border: 0; padding: 0; resize: none; overflow: hidden; outline: none; color: var(--texte); font-size: 14px; line-height: 1.5; font-family: inherit; }
+  .fiche-note textarea::placeholder { color: #8a7a5c; }
+  .fiche-note .note-etat { min-height: 0; margin-top: 2px; }
+  .fiche-pied { display: flex; align-items: center; gap: 8px; margin: 0 24px; padding: 14px 0 20px; border-top: 1px solid var(--ligne); }
+  .fiche-pied .espace { flex: 1; }
+  .fiche-pied .btn svg { width: 15px; height: 15px; flex: none; }
+  .fiche-pied .btn.discret { padding-left: 4px; color: #c9786a; }
+  @media (max-width: 560px) { .fiche-cases { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fiche-pied { flex-wrap: wrap; } }
   .note-etat { font-size: 12px; color: var(--tres-doux); min-height: 16px; }
   .choix { display: grid; gap: 8px; }
   .choix button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; background: none; border: 1px solid var(--ligne-forte); border-radius: 6px; cursor: pointer; }
@@ -276,7 +337,8 @@
     <div class="droite">
       <label class="bascule" data-info="Afficher en tableau"><i></i>Compact</label>
       <div class="actions">
-        <button class="btn or" id="b-jouer" data-info="Lancer WoW Forever">Jouer</button>
+        <button class="btn jouer" id="b-jouer" data-info="Lancer WoW Forever">Jouer</button>
+        <button class="btn" id="b-dossier" data-info="Ouvre le dossier AddOns du jeu dans l'Explorateur">Mon dossier addons</button>
         <button class="btn" id="b-verifier" data-info="Cherche les mises à jour de tes addons">Vérifier les mises à jour</button>
         <button class="btn" id="b-ajouter" data-info="Ajouter un addon">+ Ajouter un addon</button>
         <button class="btn icone" id="b-reglages" data-info="Réglages">⚙</button>
@@ -384,6 +446,8 @@ let sens = lireLocal("sens") === "desc" ? "desc" : "asc";    // asc = A → Z, o
 let PROGRES = {};        // installations en cours : [id] = { etape, pourcent, mo }
 let recherche = "";
 let enEdition = null;
+let derniereVue = null;   // pour n'animer les cartes qu'au changement de vue
+const avisVus = new Set(); // bandeaux déjà montrés (animés une seule fois)
 
 function lireLocal(k) { try { return localStorage.getItem("hamax-" + k); } catch { return null; } }
 function ecrireLocal(k, v) { try { localStorage.setItem("hamax-" + k, v); } catch {} }
@@ -395,10 +459,13 @@ document.querySelector(".bascule").onclick = () => {
   ecrireLocal("compact", document.body.classList.contains("compact") ? "1" : "0");
 };
 
+// Clé de session donnée par l'appli dans l'adresse de la fenêtre (après le « # », jamais envoyée sur le réseau)
+const CLE = new URLSearchParams(location.hash.slice(1)).get("cle") || "";
+
 async function api(chemin, corps, zip) {
-  const opts = corps === undefined ? {} : {
+  const opts = corps === undefined ? { headers: { "X-Hamax": CLE } } : {
     method: "POST",
-    headers: { "X-Hamax": "1", "Content-Type": zip ? "application/zip" : "application/json" },
+    headers: { "X-Hamax": CLE, "Content-Type": zip ? "application/zip" : "application/json" },
     body: zip ? corps : JSON.stringify(corps),
   };
   const r = await fetch(chemin, opts);
@@ -432,17 +499,36 @@ async function enCours(texte, fn) {
 }
 
 async function occupe(bouton, fn) {
-  const avant = bouton?.textContent;
+  const avant = bouton?.innerHTML;   // innerHTML : garde l'icône du bouton (Jouer)
   if (bouton) { bouton.disabled = true; bouton.textContent = "…"; }
   try { return await fn(); }
   catch (e) { toast(e.message, "erreur"); }
-  finally { if (bouton) { bouton.disabled = false; bouton.textContent = avant; } }
+  finally { if (bouton) { bouton.disabled = false; bouton.innerHTML = avant; } }
 }
 
 async function charger() {
-  try { ETAT = await api("/api/etat"); for (const ev of ETAT.evenements || []) toast(ev.texte, ev.type === "erreur" ? "erreur" : "ok"); }
+  let confirmer = [];
+  try {
+    ETAT = await api("/api/etat");
+    for (const ev of ETAT.evenements || []) {
+      if (ev.type === "confirmer") confirmer.push(ev);
+      else toast(ev.texte, ev.type === "erreur" ? "erreur" : "ok");
+    }
+  }
   catch (e) { document.getElementById("contenu").innerHTML = `<p class="vide">L'appli ne répond pas : ${esc(e.message)}</p>`; return; }
   rendre();
+  for (const ev of confirmer) await installerDepuisLien(ev);
+}
+
+// Bouton « Install » du site CurseForge : n'importe quel site peut ouvrir ce lien, donc rien ne s'installe sans ton accord.
+async function installerDepuisLien(ev) {
+  const quoi = ev.nom ? `« ${ev.nom} »` : `l'addon CurseForge n° ${ev.projet}`;
+  if (!confirm(`Installer ${quoi} depuis CurseForge ?\nSa dernière version pour WoW Forever ira dans « À tester ».`)) return;
+  await occupe(null, async () => {
+    const r = await enCours(`Installation de ${ev.nom || "l'addon"}…`, () => api("/api/installer-curseforge", { projet: ev.projet }));
+    toast(`${r.nom} installé depuis CurseForge, rangé dans « À tester ».`);
+    await charger();
+  });
 }
 
 // --- Données dérivées -------------------------------------------------------------
@@ -459,7 +545,9 @@ function lienSource(a) {
 
 // Logo CurseForge, sinon pastille avec les initiales (couleur stable tirée du nom)
 function logo(a) {
-  if (a.logo) return `<img class="logo" src="${esc(a.logo)}" alt="" loading="lazy">`;
+  // Logo CurseForge, sinon l'icône que l'addon déclare dans son .toc
+  const image = a.logo || a.icone;
+  if (image) return `<img class="logo ${a.logo ? "" : "logo-toc"}" src="${esc(image)}" alt="" loading="lazy">`;
   let h = 0;
   for (const c of a.nom) h = (h * 31 + c.charCodeAt(0)) % 360;
   const init = a.nom.split(/[\s_-]+/).filter(Boolean).map(m => m[0]).join("").slice(0, 2).toUpperCase();
@@ -529,8 +617,11 @@ function rendreOnglets() {
   const el = document.getElementById("onglets");
   el.innerHTML = ONGLETS
     .filter(([k]) => !(["inconnus", "maj"].includes(k) && !compte[k]))
-    .map(([k, l]) => `<button role="tab" data-o="${k}" aria-selected="${onglet === k}">${l}<span class="n ${k === "maj" && compte.maj ? "maj" : ""}">${compte[k] ?? 0}</span></button>`).join("");
-  el.querySelectorAll("button").forEach(b => b.onclick = () => { onglet = b.dataset.o; ecrireLocal("onglet", onglet); rendre(); });
+    .map(([k, l]) => `<button role="tab" data-o="${k}" aria-selected="${onglet === k}">${l}<span class="n ${k === "maj" && compte.maj ? "maj" : ""}">${compte[k] ?? 0}</span></button>`).join("")
+    // Pas un vrai onglet : ouvre la recherche du site CurseForge (filtre WoW Forever) dans le navigateur
+    + `<button class="externe" id="o-rechercher" title="Chercher un addon sur CurseForge (s'ouvre dans le navigateur)">Rechercher <span aria-hidden="true">↗</span></button>`;
+  el.querySelectorAll("button[data-o]").forEach(b => b.onclick = () => { onglet = b.dataset.o; ecrireLocal("onglet", onglet); rendre(); });
+  document.getElementById("o-rechercher").onclick = () => ouvrirCurseForge();
 }
 
 const STYLO = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 16.5l.8-3.6L13.6 4a1.6 1.6 0 0 1 2.3 0l.4.4a1.6 1.6 0 0 1 0 2.3l-8.9 8.9z"/></svg>`;
@@ -575,12 +666,17 @@ function rendre() {
 
   let html = "";
   if (!ETAT.dossier_ok) html += `<div class="alerte">L'appli ne trouve pas WoW Forever : clique sur <b>Analyser</b> sous le titre.</div>`;
+  // Animations : les cartes arrivent à l'ouverture ou au changement de vue, un bandeau seulement la première fois qu'il paraît
+  const vue = [onglet, genre, recherche].join("|");
+  const entree = vue !== derniereVue ? " entree" : "";
+  derniereVue = vue;
+  const avis = cle => { const neuf = !avisVus.has(cle); avisVus.add(cle); return neuf ? "avis nouveau" : "avis"; };
   if (ETAT.maj_appli) {
-    html += `<div class="avis"><span><b>${NOM} ${esc(ETAT.maj_appli.version)}</b> est disponible.</span><button class="btn petit avis-premier" id="b-notes-appli">Nouveautés</button><button class="btn or petit" id="b-maj-appli">Mettre à jour l'appli</button></div>`;
+    html += `<div class="${avis("appli " + ETAT.maj_appli.version)}"><span><b>${NOM} ${esc(ETAT.maj_appli.version)}</b> est disponible.</span><button class="btn petit avis-premier" id="b-notes-appli">Nouveautés</button><button class="btn or petit" id="b-maj-appli">Mettre à jour l'appli</button></div>`;
   }
   const maj = ETAT.addons.filter(aMaj);
   if (maj.length && onglet !== "inconnus") {
-    html += `<div class="avis"><span>${maj.length === 1 ? `<b>${esc(maj[0].nom)}</b> peut passer en ${esc(maj[0].maj.version)}` : `<b>${maj.length} mises à jour</b> : ${esc(maj.map(a => a.nom).join(", "))}`}</span><button class="btn or petit" id="b-tout">Tout mettre à jour</button></div>`;
+    html += `<div class="${avis("addons " + maj.map(a => a.id + a.maj.version).join(","))}"><span>${maj.length === 1 ? `<b>${esc(maj[0].nom)}</b> peut passer en ${esc(maj[0].maj.version)}` : `<b>${maj.length} mises à jour</b> : ${esc(maj.map(a => a.nom).join(", "))}`}</span><button class="btn or petit" id="b-tout">Tout mettre à jour</button></div>`;
   }
 
   if (onglet === "inconnus") {
@@ -614,8 +710,8 @@ function rendre() {
       </select></label>
       <button class="btn petit" id="b-sens" title="Inverser l'ordre">${libelleSens}</button></div>`;
     if (!liste.length) html += `<p class="vide">${recherche ? "Rien dans ta collection à ce nom." : onglet === "a_tester" ? "Rien à tester : trouve un addon sur CurseForge pour l'installer." : "Rien ici pour l'instant."}</p>`;
-    else html += `<div class="grille">${liste.map(carte).join("")}</div>
-      <div class="tableau"><div class="rang-tete"><span></span><span>Addon</span><span>Statut</span><span>Version</span><span></span><span></span></div>${liste.map(rang).join("")}</div>`;
+    else html += `<div class="grille${entree}">${liste.map(carte).join("")}</div>
+      <div class="tableau${entree}"><div class="rang-tete"><span></span><span>Addon</span><span>Statut</span><span>Version</span><span></span><span></span></div>${liste.map(rang).join("")}</div>`;
   }
   const barre = document.getElementById("f-recherche");
   const champ = document.getElementById("recherche");
@@ -624,6 +720,8 @@ function rendre() {
   document.getElementById("contenu").innerHTML = html;
   document.getElementById("place-recherche")?.replaceWith(barre);
   if (avaitFocus) champ.focus();
+  if (entree) document.querySelectorAll("#contenu .grille .carte, #contenu .tableau .rang")
+    .forEach((el, i) => el.style.animationDelay = Math.min(i % 40, 14) * 22 + "ms");   // en cascade, plafonnée
   const tout = document.getElementById("b-tout");
   if (tout) tout.onclick = e => toutMettreAJour(e.currentTarget);
 }
@@ -863,36 +961,54 @@ function noteRapide(a, carteEl) {
 function ouvrirFiche(a) {
   const info = a.info || {};
   const lien = lienSource(a);
-  const lignes = [
-    ["Genre", esc(genreDe(a))],
-    ["Source", esc(SOURCES[a.source?.type] || "—") + (a.source?.projet ? ` · projet ${esc(a.source.projet)}` : "") + (lien ? ` · <a href="${esc(lien)}" target="_blank" rel="noopener">page</a>` : "")],
-    ["Auteur", esc(info.auteur || "—")],
-    ["Dossiers", (a.dossiers || []).length ? `<code>${a.dossiers.map(esc).join("<br>")}</code>` : "—"],
-  ];
-  if (a.dossiers_manquants?.length && a.installe) lignes.push(["Manquants", `<span class="attention">${esc(a.dossiers_manquants.join(", "))}</span>`]);
-  if (a.incompatibles?.length) lignes.push(["Attention", `<span class="attention">pas de .toc WoW Forever : ${esc(a.incompatibles.join(", "))}</span>`]);
-  if (a.maj?.verifie_le) lignes.push(["Vérifié le", esc(a.maj.verifie_le)]);
   const d = document.getElementById("d-fiche"), f = document.getElementById("f-fiche");
+  const date = t => t ? new Date(t.replace(" ", "T")).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
+  const cases = [
+    ["Source", lien ? `<a href="${esc(lien)}" target="_blank" rel="noopener">${esc(SOURCES[a.source?.type])} ${ICONES_FICHE.lien}</a>` : esc(SOURCES[a.source?.type] || "—")],
+    distant(a) && ["Canal", { release: "Release", beta: "Bêta", alpha: "Alpha" }[a.source?.canal || "release"]],
+    ["Dossiers", (a.dossiers || []).length ? `<span title="${esc(a.dossiers.join("\n"))}">${esc(a.dossiers[0])}${a.dossiers.length > 1 ? ` +${a.dossiers.length - 1}` : ""}</span>` : "—"],
+    a.maj?.verifie_le && ["Vérifié", esc(a.maj.verifie_le.slice(8, 10) + "/" + a.maj.verifie_le.slice(5, 7) + " à " + a.maj.verifie_le.slice(11))],
+    a.ajoute_le && ["Ajouté le", esc(date(a.ajoute_le))],
+    a.source?.projet && ["Projet", esc(a.source.projet)],
+  ].filter(Boolean);
+  const alertes = [];
+  if (a.dossiers_manquants?.length && a.installe) alertes.push(`Dossiers manquants : ${esc(a.dossiers_manquants.join(", "))}`);
+  if (a.incompatibles?.length) alertes.push(`Pas de .toc pour WoW Forever : ${esc(a.incompatibles.join(", "))}`);
+  const action = actionAddon(a).replace("btn petit", "btn");
   f.innerHTML = `
-    <div class="fiche-tete">${logo(a)}<div style="min-width:0"><h3>${esc(a.nom)}</h3>
-      <div class="aide">${esc(genreDe(a))}${a.perso ? ` · <span class="st-perso">Ma création</span>` : ""}</div></div></div>
-    ${description(a) ? `<p class="fiche-desc">${esc(description(a))}</p>` : ""}
-    <div class="fiche-statut" role="group" aria-label="Statut">${ETAT.statuts.map(s => `<button type="button" data-statut="${s}" class="st-${s}" aria-pressed="${a.statut === s}">${LIBELLES[s]}</button>`).join("")}</div>
-    <div class="fiche-note">
-      <div class="fiche-note-tete"><label for="fiche-notes">Mes notes</label><span class="note-etat" id="fiche-etat"></span></div>
-      <textarea rows="4" id="fiche-notes" placeholder="Ce que tu en penses, tes réglages…">${esc(a.notes || "")}</textarea>
+    <div class="fiche-banniere"><button type="button" class="fiche-x" id="fiche-fermer" aria-label="Fermer">✕</button></div>
+    <div class="fiche-tete">
+      ${logo(a)}
+      <div class="fiche-titres"><h3>${esc(a.nom)}</h3>
+        <div class="fiche-puces">
+          <span class="puce">${esc(genreDe(a))}</span>
+          ${info.auteur ? `<span class="puce">par ${esc(info.auteur)}</span>` : ""}
+          ${a.perso ? `<span class="puce st-perso">Ma création</span>` : ""}
+          ${ligneVersion(a) ? `<span class="puce etat-ligne">${ligneVersion(a)}</span>` : ""}
+        </div>
+      </div>
     </div>
-    <div class="fiche-ligne"><span class="etat-ligne">${version(a) ? "Version " : ""}${ligneVersion(a)}</span><span>${actionAddon(a)}</span></div>
-    <details class="fiche-details"><summary>Détails</summary><dl class="fiche-infos">${lignes.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl></details>
-    <div class="pied-fenetre">
-      <button class="btn discret" type="button" id="fiche-retirer" style="margin-right:auto">${a.installe ? "Désinstaller" : "Supprimer"}</button>
-      ${distant(a) && a.installe ? `<button class="btn" type="button" id="fiche-reinstaller">Réinstaller</button>` : ""}
-      <button class="btn" type="button" id="fiche-modifier">Modifier</button>
-      <button class="btn or" type="button" id="fiche-fermer">Fermer</button>
+    <div class="fiche-corps">
+      <div class="fiche-statut" role="group" aria-label="Statut">${ETAT.statuts.map(s => `<button type="button" data-statut="${s}" class="st-${s}" aria-pressed="${a.statut === s}"><i></i>${LIBELLES[s]}</button>`).join("")}</div>
+      ${description(a) ? `<p class="fiche-desc">${esc(description(a))}</p>` : ""}
+      ${alertes.map(t => `<div class="fiche-alerte">⚠ ${t}</div>`).join("")}
+      <div class="fiche-cases">${cases.map(([k, v]) => `<div><small>${k}</small><span>${v}</span></div>`).join("")}</div>
+      <label class="fiche-note">${STYLO}<textarea rows="1" id="fiche-notes" placeholder="Ajouter une note : ce que tu en penses, tes réglages…" aria-label="Mes notes">${esc(a.notes || "")}</textarea><span class="note-etat" id="fiche-etat"></span></label>
+    </div>
+    <div class="fiche-pied">
+      <button class="btn discret" type="button" id="fiche-retirer">${ICONES_FICHE.corbeille}${a.installe ? "Désinstaller" : "Supprimer"}</button>
+      <span class="espace"></span>
+      ${a.installe ? `<button class="btn icone" type="button" id="fiche-dossier" title="Ouvrir son dossier">${ICONES_FICHE.dossier}</button>` : ""}
+      ${distant(a) && a.installe && !aMaj(a) ? `<button class="btn" type="button" id="fiche-reinstaller">${ICONES_FICHE.recharger}Réinstaller</button>` : ""}
+      <button class="btn" type="button" id="fiche-modifier">${STYLO}Modifier</button>
+      ${action}
     </div>`;
+  colorerBanniere(f.querySelector(".fiche-banniere"), f.querySelector(".fiche-tete .logo"), a.nom);
 
   // Notes enregistrées toutes seules : après une pause dans la frappe, et à la fermeture
   const notes = f.querySelector("#fiche-notes"), etatNote = f.querySelector("#fiche-etat");
+  const ajuster = () => { notes.style.height = "auto"; notes.style.height = notes.scrollHeight + "px"; };
+  notes.addEventListener("input", ajuster);
   let minuteur;
   const sauver = async () => {
     clearTimeout(minuteur);
@@ -902,6 +1018,8 @@ function ouvrirFiche(a) {
     catch (e) { toast(e.message, "erreur"); }
   };
   notes.oninput = () => { etatNote.textContent = ""; clearTimeout(minuteur); minuteur = setTimeout(sauver, 700); };
+  const dossier = f.querySelector("#fiche-dossier");
+  if (dossier) dossier.onclick = () => actions.ouvrir(a);
   d.addEventListener("close", () => sauver().then(charger), { once: true });
 
   f.querySelector("#fiche-fermer").onclick = async () => { await sauver(); d.close(); };
@@ -921,8 +1039,49 @@ function ouvrirFiche(a) {
     else actions.installer(a);
   });
   d.showModal();
+  ajuster();
   notes.focus();
   notes.setSelectionRange(notes.value.length, notes.value.length);
+}
+
+const ICONES_FICHE = {
+  corbeille: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4h4v2M6 6l.7 10h6.6L14 6M8.5 9v4.5M11.5 9v4.5"/></svg>`,
+  dossier: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 6a1 1 0 0 1 1-1h4l2 2h6a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>`,
+  recharger: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 8A6 6 0 0 0 4.6 7M4.5 12a6 6 0 0 0 10.9 1M4 3.5V7h3.5M16 16.5V13h-3.5"/></svg>`,
+  lien: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4h5v5M16 4l-7 7M14 12v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3"/></svg>`,
+};
+
+// Bannière de la fiche aux couleurs du logo (moyenne de ses pixels colorés). Sans image lisible : couleur tirée du nom.
+function colorerBanniere(banniere, image, nom) {
+  const peindre = (t, s) => banniere.style.setProperty("--teinte", t) || banniere.style.setProperty("--sat", s + "%");
+  let h = 0;
+  for (const c of nom) h = (h * 31 + c.charCodeAt(0)) % 360;
+  peindre(h, 38);
+  if (!(image instanceof HTMLImageElement)) return;
+  const lire = () => {
+    try {
+      const c = document.createElement("canvas");
+      c.width = c.height = 24;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(image, 0, 0, 24, 24);
+      const p = ctx.getImageData(0, 0, 24, 24).data;
+      let r = 0, g = 0, b = 0, poids = 0;
+      for (let i = 0; i < p.length; i += 4) {
+        const max = Math.max(p[i], p[i + 1], p[i + 2]), min = Math.min(p[i], p[i + 1], p[i + 2]);
+        const w = (p[i + 3] / 255) * ((max - min) / 255 + .05);   // les pixels colorés comptent plus que le gris
+        r += p[i] * w; g += p[i + 1] * w; b += p[i + 2] * w; poids += w;
+      }
+      if (!poids) return;
+      [r, g, b] = [r / poids / 255, g / poids / 255, b / poids / 255];
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), e = max - min;
+      if (e < .06) return peindre(35, 12);   // logo presque gris : bannière neutre et chaude
+      const t = max === r ? ((g - b) / e) % 6 : max === g ? (b - r) / e + 2 : (r - g) / e + 4;
+      peindre(Math.round((t * 60 + 360) % 360), Math.min(70, Math.round(e * 100 + 25)));
+    } catch { /* image d'un autre site sans autorisation : on garde la couleur du nom */ }
+  };
+  // Les logos CurseForge viennent d'un autre site : on le recharge en demandant l'autorisation de lire ses pixels
+  if (image.src.startsWith(location.origin)) image.complete ? lire() : image.addEventListener("load", lire, { once: true });
+  else { const copie = new Image(); copie.crossOrigin = "anonymous"; copie.onload = () => { image = copie; lire(); }; copie.src = image.src; }
 }
 
 // --- Trouver un addon : sur le site CurseForge, dont le bouton Install revient dans l'appli ---
@@ -965,6 +1124,7 @@ document.getElementById("b-jouer").onclick = e => occupe(e.currentTarget, async 
   await api("/api/jouer", {});
   toast("WoW Forever se lance.");
 });
+document.getElementById("b-dossier").onclick = e => occupe(e.currentTarget, () => api("/api/dossier-addons", {}));
 document.getElementById("b-verifier").onclick = e => occupe(e.currentTarget, async () => {
   const r = await api("/api/verifier", {});
   const erreurs = Object.values(r).filter(x => x.erreur).length;

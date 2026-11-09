@@ -22,6 +22,7 @@ import io
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -36,7 +37,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.7.8"
+VERSION = "0.7.9"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
@@ -55,6 +56,9 @@ FICHIER_MAJ = RACINE / "registre" / "maj.json"
 DOSSIER_SAUVEGARDES = RACINE / "sauvegardes"
 DOSSIER_UI = RESSOURCES / "ui"
 FICHIER_CHANGELOG = RESSOURCES / "CHANGELOG.md"
+# Clé tirée au hasard à chaque lancement : sans elle, le serveur local ne répond pas. Le fichier est dans le
+# dossier de l'utilisateur, que les autres comptes Windows ne peuvent pas lire.
+FICHIER_CLE = RACINE / "cle-session.txt"
 
 STATUTS = ("a_tester", "valide", "rejete")
 # Registres plus anciens. « perso » n'est plus un statut mais une étiquette (champ « perso ») :
@@ -65,6 +69,7 @@ TYPES_SOURCE = ("curseforge", "github", "page", "local", "aucune")
 CANAUX = {"release": 1, "beta": 2, "alpha": 3}  # = releaseType CurseForge maximum accepté
 SUFFIXE_TOC = re.compile(r"[_-](Mainline|Classic|Vanilla|TBC|BCC|Wrath|WOTLKC|Cata|Mists|Camelot|Standard)$", re.I)
 TAILLE_MAX_ZIP = 300 * 1024 * 1024
+TAILLE_MAX_DECOMPRESSEE = 1024 * 1024 * 1024   # un zip piégé ne doit pas remplir le disque
 AGENT = "Mozilla/5.0 (forever-addons-manager)"
 
 verrou = threading.Lock()
@@ -201,6 +206,7 @@ def info_dossier(dossier, interface_cible):
         "compatible": any(interface_cible in interfaces(m) for _, m in tocs),
         "dependances": [d.strip() for d in deps.split(",") if d.strip()],
         "site": meta.get("X-Website", ""),
+        "icone_texture": meta.get("IconTexture", ""),
         "curseforge_id": curse_id,
         "lien": lien,
         "cible": os.readlink(dossier) if lien else "",
@@ -298,6 +304,62 @@ def reconnaitre(scan):
             })
 
 
+# --- Icônes des addons (« ## IconTexture » du .toc) ------------------------------------
+
+ICONES = {}          # [id de l'addon] = fichier image dans le dossier de l'addon
+_cache_icones = {}   # [(fichier, date de modif)] = PNG prêt à servir
+EXTENSIONS_IMAGE = (".tga", ".blp", ".png", ".jpg", ".jpeg")
+
+
+def fichier_icone(base, texture):
+    """Interface\\AddOns\\Baganator\\Assets\\logo  →  le fichier image, s'il est dans le dossier de l'addon.
+    Les textures du jeu lui-même (Interface\\Icons\\…) sont dans ses archives : illisibles ici."""
+    morceaux = [m for m in re.split(r"[\\/]+", texture.strip()) if m]
+    if len(morceaux) < 4 or morceaux[0].lower() != "interface" or morceaux[1].lower() != "addons":
+        return None
+    if any(m in (".", "..") or ":" in m for m in morceaux[2:]):
+        return None
+    dossier = base / morceaux[2]
+    if est_lien(dossier):
+        dossier = cible_lien(dossier)
+    chemin = dossier.joinpath(*morceaux[3:])
+    candidats = [chemin] if chemin.suffix.lower() in EXTENSIONS_IMAGE else []
+    candidats += [chemin.with_name(chemin.name + ext) for ext in EXTENSIONS_IMAGE]
+    return next((c for c in candidats if c.is_file()), None)
+
+
+def adresse_icone(addon_id, config, info):
+    """Adresse de l'icône d'un addon installé pour l'interface, ou "" s'il n'en déclare pas."""
+    if not info or not info.get("icone_texture") or not dossier_valide(config):
+        return ""
+    fichier = fichier_icone(Path(config["dossier_addons"]), info["icone_texture"])
+    if not fichier:
+        return ""
+    ICONES[addon_id] = fichier
+    return f"/icones/{urllib.parse.quote(addon_id)}.png?v={int(fichier.stat().st_mtime)}"
+
+
+def png_icone(addon_id):
+    """L'icône convertie en PNG 128 px (les .tga et .blp du jeu ne s'affichent pas dans une page web)."""
+    fichier = ICONES.get(addon_id)
+    if not fichier or not fichier.is_file():
+        return None
+    cle = (str(fichier), fichier.stat().st_mtime)
+    if cle not in _cache_icones:
+        try:
+            from PIL import Image
+            with Image.open(fichier) as image:
+                image = image.convert("RGBA")
+                image.thumbnail((128, 128))
+                sortie = io.BytesIO()
+                image.save(sortie, "PNG")
+            _cache_icones[cle] = sortie.getvalue()
+        except Exception as e:  # noqa: BLE001 — format inconnu : l'interface affiche les initiales
+            print(f"{maintenant()} icône de {addon_id} illisible : {e}")
+            _cache_icones[cle] = None
+    return _cache_icones[cle]
+
+
 def etat():
     config = charger_config()
     maj = lire_json(FICHIER_MAJ, {})
@@ -320,6 +382,7 @@ def etat():
             "incompatibles": [d for d in trouves if not scan[d]["compatible"]],
             "info": info,
             "maj": {**distant, "dispo": maj_dispo(a, info, distant)} if distant else None,
+            "icone": adresse_icone(a["id"], config, info),
         })
     for a in addons:  # registres plus anciens
         a["perso"] = bool(a.get("perso") or a.get("statut") == "perso")
@@ -823,6 +886,9 @@ def _installer_zip(octets, addon_id, nom_fichier, fichier, source):
         zf = zipfile.ZipFile(io.BytesIO(octets))
     except zipfile.BadZipFile as e:
         raise Erreur("Ce fichier n'est pas un zip valide.") from e
+    # La taille annoncée fait foi : zipfile ne lit jamais plus que ce qu'annonce chaque fichier
+    if sum(i.file_size for i in zf.infolist()) > TAILLE_MAX_DECOMPRESSEE:
+        raise Erreur("Zip refusé : une fois décompressé, il dépasserait 1 Go.")
     racines = dossiers_du_zip(zf)
     if not racines:
         raise Erreur("Aucun addon dans ce zip (pas de fichier .toc).")
@@ -954,6 +1020,13 @@ def ouvrir(addon_id):
     addon = trouver_addon(addon_id)
     base = dossier_addons()
     dossier = next((base / d for d in addon.get("dossiers", []) if (base / d).exists()), base)
+    os.startfile(dossier)
+    return {"ouvert": str(dossier)}
+
+
+def ouvrir_dossier_addons():
+    """Bouton « Mon dossier addons » : le dossier AddOns du jeu dans l'Explorateur."""
+    dossier = dossier_addons()
     os.startfile(dossier)
     return {"ouvert": str(dossier)}
 
@@ -1171,6 +1244,25 @@ def verification_auto(arret):
 
 def adresse_locale():
     return f"http://127.0.0.1:{int(charger_config()['port'])}/"
+
+
+def lire_cle():
+    try:
+        return FICHIER_CLE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def adresse_interface():
+    """L'adresse de la fenêtre, clé comprise. Elle est après le « # » : jamais envoyée sur le réseau."""
+    return f"{adresse_locale()}#cle={lire_cle()}"
+
+
+def appeler_instance(route, donnees, delai):
+    """Requête à l'instance principale, avec la clé qu'elle a écrite au démarrage."""
+    req = urllib.request.Request(adresse_locale() + route, data=json.dumps(donnees).encode(), method="POST",
+                                 headers={"X-Hamax": lire_cle(), "Content-Type": "application/json"})
+    return urllib.request.urlopen(req, timeout=delai).read()
 
 
 def chercher_edge():
@@ -1469,7 +1561,7 @@ def fenetre_seule():
     ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))   # PER_MONITOR_AWARE_V2
     import webview
     DOSSIER_WEBVIEW.mkdir(parents=True, exist_ok=True)
-    FENETRE = webview.create_window(NOM, adresse_locale(), width=1280, height=880, min_size=TAILLE_MINI,
+    FENETRE = webview.create_window(NOM, adresse_interface(), width=1280, height=880, min_size=TAILLE_MINI,
                                     background_color="#0f0d0a")
     FENETRE.events.before_show += _restaurer_placement
     FENETRE.events.before_show += _suivre_placement
@@ -1498,20 +1590,18 @@ def ouvrir_edge():
         _derniere_ouverture = time.monotonic()
         edge = chercher_edge()
         if edge:
-            subprocess.Popen([str(edge), f"--app={adresse_locale()}", "--window-size=1280,880"],
+            subprocess.Popen([str(edge), f"--app={adresse_interface()}", "--window-size=1280,880"],
                              creationflags=subprocess.CREATE_NO_WINDOW)
         else:
-            webbrowser.open(adresse_locale())
+            webbrowser.open(adresse_interface())
 
 
 def demander_a_l_instance(lien=None):
     """l'appli tourne déjà : on lui demande d'ouvrir sa fenêtre (et de traiter un lien CurseForge), puis on s'arrête."""
     import ctypes
     ctypes.windll.user32.AllowSetForegroundWindow(-1)   # ASFW_ANY
-    req = urllib.request.Request(adresse_locale() + "api/fenetre", data=json.dumps({"lien": lien}).encode(),
-                                 headers={"X-Hamax": "1", "Content-Type": "application/json"}, method="POST")
     try:
-        urllib.request.urlopen(req, timeout=10).read()
+        appeler_instance("api/fenetre", {"lien": lien}, 10)
     except OSError as e:
         print(f"{maintenant()} instance principale injoignable : {e}")
 
@@ -1522,20 +1612,16 @@ EVENEMENTS = []   # messages à afficher dans l'interface (installation lancée 
 
 
 def traiter_lien(lien):
-    """curseforge://install/?addonId=914482&fileId=…  →  installe la dernière version WoW Forever de l'addon.
+    """curseforge://install/?addonId=914482&fileId=…  →  propose dans la fenêtre d'installer l'addon.
+    Rien ne s'installe sans un clic dans l'appli : n'importe quel site peut ouvrir un lien curseforge://.
     Le fileId est ignoré exprès : depuis une page « retail », il désignerait un fichier qui ne marche pas sur Forever."""
     q = urllib.parse.parse_qs(urllib.parse.urlparse(lien).query)
     projet = (q.get("addonId") or q.get("addonid") or [""])[0]
     if not projet.isdigit():
         EVENEMENTS.append({"type": "erreur", "texte": f"Lien CurseForge non reconnu : {lien[:80]}"})
         return
-    try:
-        r = ajouter_curseforge(projet)
-        EVENEMENTS.append({"type": "ok", "texte": f"{r['nom']} installé depuis CurseForge, rangé dans « À tester »."})
-    except Erreur as e:
-        EVENEMENTS.append({"type": "erreur", "texte": f"Installation depuis CurseForge impossible : {e}"})
-    except Exception as e:  # noqa: BLE001
-        EVENEMENTS.append({"type": "erreur", "texte": f"Installation depuis CurseForge impossible : {type(e).__name__} : {e}"})
+    connu = next((a for a in charger_registre()["addons"] if str(a.get("source", {}).get("projet")) == projet), None)
+    EVENEMENTS.append({"type": "confirmer", "projet": projet, "nom": connu["nom"] if connu else ""})
 
 
 CLE_LIENS = r"Software\Classes\curseforge"
@@ -1586,6 +1672,7 @@ def regler_liens_curseforge(actif):
 
 ICONE = None          # icône de la zone de notification (pystray), si disponible
 SERVEUR = None
+CLE_SESSION = secrets.token_urlsafe(32)
 
 
 def demander_arret():
@@ -1682,8 +1769,18 @@ class Gestionnaire(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(corps)
 
+    def autorise(self, cle=True):
+        """Hôte local exigé : un site web ne peut pas viser ce serveur, même par « DNS rebinding ».
+        Clé de session exigée : les autres programmes et comptes du PC non plus."""
+        port = self.server.server_address[1]
+        if self.headers.get("Host") not in (f"127.0.0.1:{port}", f"localhost:{port}"):
+            return False
+        return not cle or secrets.compare_digest(self.headers.get("X-Hamax") or "", CLE_SESSION)
+
     def do_GET(self):
         chemin = urllib.parse.urlparse(self.path).path
+        if not self.autorise(cle=chemin.startswith("/api/")):
+            return self.envoyer(403, {"erreur": "refusé"})
         if chemin == "/":
             self.envoyer_fichier(DOSSIER_UI / "index.html", "text/html; charset=utf-8")
         elif chemin == "/icone.svg":
@@ -1710,6 +1807,16 @@ class Gestionnaire(BaseHTTPRequestHandler):
             self.envoyer_fichier(DOSSIER_UI / "icone.png", "image/png")
         elif chemin == "/polices/BarlowCondensed.ttf":
             self.envoyer_fichier(DOSSIER_UI / "polices" / "BarlowCondensed.ttf", "font/ttf")
+        elif chemin.startswith("/icones/") and chemin.endswith(".png"):
+            png = png_icone(urllib.parse.unquote(chemin[len("/icones/"):-len(".png")]))
+            if not png:
+                return self.envoyer(404, {"erreur": "introuvable"})
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Length", str(len(png)))
+            self.send_header("Cache-Control", "max-age=86400")   # l'adresse change avec le fichier (?v=)
+            self.end_headers()
+            self.wfile.write(png)
         elif chemin == "/api/etat":
             self.envoyer(200, etat())
         elif chemin == "/api/progression":
@@ -1720,9 +1827,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
             self.envoyer(404, {"erreur": "introuvable"})
 
     def do_POST(self):
-        # Protège contre un site web qui viserait ce serveur local depuis le navigateur.
-        port = self.server.server_address[1]
-        if self.headers.get("X-Hamax") != "1" or self.headers.get("Host") not in (f"127.0.0.1:{port}", f"localhost:{port}"):
+        if not self.autorise():
             return self.envoyer(403, {"erreur": "refusé"})
         url = urllib.parse.urlparse(self.path)
         longueur = int(self.headers.get("Content-Length") or 0)
@@ -1739,6 +1844,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 "/api/appli/maj": installer_maj_appli,
                 "/api/appli/verifier": verifier_appli,
                 "/api/installer": lambda: installer_distant(donnees["id"]),
+                "/api/installer-curseforge": lambda: ajouter_curseforge(donnees["projet"]),
                 "/api/jeu/analyser": analyser_jeu,
                 "/api/jeu/choisir": lambda: choisir_jeu(donnees["chemin"]),
                 "/api/jeu/parcourir": parcourir_jeu,
@@ -1750,6 +1856,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 "/api/lier": lambda: lier(donnees["id"]),
                 "/api/ouvrir": lambda: ouvrir(donnees["id"]),
                 "/api/jouer": jouer,
+                "/api/dossier-addons": ouvrir_dossier_addons,
                 "/api/demarrage": lambda: regler_demarrage(bool(donnees.get("actif"))),
                 "/api/quitter": demander_arret,
             }
@@ -1801,7 +1908,7 @@ def main():
         regler_demarrage(False)
         regler_liens_curseforge(False)
         try:
-            urllib.request.urlopen(urllib.request.Request(adresse_locale() + "api/quitter", data=b"{}", method="POST", headers={"X-Hamax": "1", "Content-Type": "application/json"}), timeout=3)
+            appeler_instance("api/quitter", {}, 3)
             threading.Event().wait(6)
         except OSError:
             pass
@@ -1818,8 +1925,9 @@ def main():
         if not silencieux or lien:
             demander_a_l_instance(lien)
         return
+    FICHIER_CLE.write_text(CLE_SESSION, encoding="utf-8")   # avant la fenêtre, qui la lit
     if lien:
-        threading.Thread(target=traiter_lien, args=(lien,), daemon=True).start()
+        traiter_lien(lien)
         silencieux = False
     priorite_arriere_plan()
     try:  # conscient de l'échelle d'affichage : Windows n'agrandit plus (et ne floute plus) l'icône près de l'horloge

@@ -38,7 +38,10 @@ VSVersionInfo(
 
 # Fermer l'instance en cours (sinon app\ est verrouillé)
 if (-not $Publication) { try {
-    Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8765/api/quitter" -Headers @{ "X-Hamax" = "1" } -ContentType "application/json" -Body "{}" -TimeoutSec 3 | Out-Null
+    # Clé de session écrite par l'appli au démarrage (les versions d'avant la 0.7.9 attendaient « 1 »)
+    $fichierCle = Join-Path $env:LOCALAPPDATA "$nom\cle-session.txt"
+    $cle = if (Test-Path $fichierCle) { (Get-Content $fichierCle -Raw).Trim() } else { "1" }
+    Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8765/api/quitter" -Headers @{ "X-Hamax" = $cle } -ContentType "application/json" -Body "{}" -TimeoutSec 3 | Out-Null
     Write-Host "l'appli fermé, attente de l'arrêt..."
     Start-Sleep -Seconds 6
 } catch { } }

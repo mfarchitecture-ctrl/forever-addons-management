@@ -43,7 +43,10 @@ jobs:
           $etat = $null
           foreach ($i in 1..30) {
             Start-Sleep -Seconds 1
-            try { $etat = Invoke-RestMethod "http://127.0.0.1:8765/api/etat" -TimeoutSec 2; break } catch { }
+            try {
+              $cle = (Get-Content (Join-Path $env:LOCALAPPDATA "Forever Addons Manager\cle-session.txt") -Raw).Trim()
+              $etat = Invoke-RestMethod "http://127.0.0.1:8765/api/etat" -Headers @{ "X-Hamax" = $cle } -TimeoutSec 2; break
+            } catch { }
           }
           Stop-Process -Id $p.Id -Force
           if (-not $etat) { throw "L'appli ne répond pas." }
