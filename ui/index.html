@@ -289,6 +289,12 @@
   .fiche-note textarea { flex: 1; min-width: 0; background: none; border: 0; padding: 0; resize: none; overflow: hidden; outline: none; color: var(--texte); font-size: 14px; line-height: 1.5; font-family: inherit; }
   .fiche-note textarea::placeholder { color: #8a7a5c; }
   .fiche-note .note-etat { min-height: 0; margin-top: 2px; }
+  .fiche-reglages { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border-radius: 7px; padding: 8px 8px 8px 12px; }
+  .fiche-reglages > div { flex: 1; min-width: 0; }
+  .fiche-reglages small { display: block; font-size: 11.5px; color: var(--tres-doux); margin-bottom: 1px; }
+  .fiche-reglages span { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fiche-reglages .btn { flex: none; }
+  .import-lignes { display: grid; gap: 10px; }
   .fiche-pied { display: flex; align-items: center; gap: 8px; margin: 0 24px; padding: 14px 0 20px; border-top: 1px solid var(--ligne); }
   .fiche-pied .espace { flex: 1; }
   .fiche-pied .btn svg { width: 15px; height: 15px; flex: none; }
@@ -338,7 +344,8 @@
       <label class="bascule" data-info="Afficher en tableau"><i></i>Compact</label>
       <div class="actions">
         <button class="btn jouer" id="b-jouer" data-info="Lancer WoW Forever">Jouer</button>
-        <button class="btn" id="b-dossier" data-info="Ouvre le dossier AddOns du jeu dans l'Explorateur">Mon dossier addons</button>
+        <button class="btn" id="b-wtf" data-info="Ouvre le dossier WTF du jeu (réglages des addons) dans l'Explorateur">Mon dossier WTF</button>
+        <button class="btn" id="b-dossier"data-info="Ouvre le dossier AddOns du jeu dans l'Explorateur">Mon dossier addons</button>
         <button class="btn" id="b-verifier" data-info="Cherche les mises à jour de tes addons">Vérifier les mises à jour</button>
         <button class="btn" id="b-ajouter" data-info="Ajouter un addon">+ Ajouter un addon</button>
         <button class="btn icone" id="b-reglages" data-info="Réglages">⚙</button>
@@ -424,6 +431,35 @@
   </form>
 </dialog>
 
+<dialog id="d-bug">
+  <form method="dialog" id="f-bug">
+    <h3>Signaler un bug</h3>
+    <label class="case"><input type="radio" name="sujet" value="appli" checked> Bug dans l'appli</label>
+    <label class="case"><input type="radio" name="sujet" value="addon"> Bug avec un addon</label>
+    <label id="l-bug-addon" hidden>Addon concerné <select name="addon"></select></label>
+    <label>Ce qui s'est passé <textarea name="description" rows="4" placeholder="Ex. la mise à jour de tel addon échoue avec un message d'erreur"></textarea></label>
+    <p class="aide" id="bug-statut" role="status"></p>
+    <div class="pied-fenetre">
+      <button class="btn" type="button" data-fermer>Annuler</button>
+      <button class="btn or" type="button" id="bug-envoyer">Envoyer</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="d-reglages">
+  <form method="dialog">
+    <h3>Importer des réglages</h3>
+    <p class="aide">Réglages de <span id="reg-source"></span> Choisis où les poser. Les réglages actuels sont gardés dans les sauvegardes. Le jeu doit être fermé.</p>
+    <div class="import-lignes" id="reg-lignes"></div>
+    <p class="aide" id="reg-erreur" role="alert" style="color: var(--rouge)"></p>
+    <div class="pied-fenetre">
+      <button class="btn" type="button" data-fermer>Annuler</button>
+      <button class="btn or" type="button" id="reg-importer">Importer</button>
+    </div>
+  </form>
+</dialog>
+
+<input type="file" id="i-reglages" accept=".zip" hidden>
 <input type="file" id="i-zip" accept=".zip" hidden>
 <div id="depot">Lâche le .zip pour l'installer</div>
 <div id="toasts"></div>
@@ -492,6 +528,16 @@ function activite(texte) {
   document.getElementById("toasts").append(el);
   return { texte: t => { libelle.textContent = t; }, fin: () => el.remove() };
 }
+// Avant d'ouvrir l'Explorateur : la fenêtre de l'appli (qui a la main) l'autorise à passer devant elle.
+// Sans effet hors de la fenêtre de l'appli (repli Edge) : le serveur tente alors seul de ramener l'Explorateur.
+async function permettrePremierPlan() {
+  try { await window.pywebview?.api?.premier_plan?.(); } catch { /* sans gravité */ }
+}
+async function apiExplorateur(chemin, corps) {
+  await permettrePremierPlan();
+  return api(chemin, corps);
+}
+
 async function enCours(texte, fn) {
   const a = activite(texte);
   try { return await fn(a); }
@@ -784,7 +830,7 @@ function menuAddon(a, ancre) {
 
 // --- Actions ---------------------------------------------------------------------
 const actions = {
-  ouvrir: a => occupe(null, () => api("/api/ouvrir", { id: a.id })),
+  ouvrir: a => occupe(null, () => apiExplorateur("/api/ouvrir", { id: a.id })),
   installer: a => occupe(null, () => avecProgres([a], async () => {
     const r = await enCours(`Installation de ${a.nom}…`, () => api("/api/installer", { id: a.id }));
     toast(`${r.nom} installé.` + (r.sauvegarde ? "\nL'ancienne version est dans les sauvegardes." : ""));
@@ -1002,6 +1048,11 @@ function ouvrirFiche(a) {
       ${description(a) ? `<p class="fiche-desc">${esc(description(a))}</p>` : ""}
       ${alertes.map(t => `<div class="fiche-alerte">⚠ ${t}</div>`).join("")}
       <div class="fiche-cases">${cases.map(([k, v]) => `<div><small>${k}</small><span>${v}</span></div>`).join("")}</div>
+      ${a.installe && (a.dossiers || []).length ? `<div class="fiche-reglages">
+        <div><small>Réglages (dossier WTF)</small><span id="fiche-reglages-etat">…</span></div>
+        <button class="btn" type="button" id="fiche-exporter" disabled>Exporter</button>
+        <button class="btn" type="button" id="fiche-importer">Importer</button>
+      </div>` : ""}
       <label class="fiche-note">${STYLO}<textarea rows="1" id="fiche-notes" placeholder="Ajouter une note : ce que tu en penses, tes réglages…" aria-label="Mes notes">${esc(a.notes || "")}</textarea><span class="note-etat" id="fiche-etat"></span></label>
     </div>
     <div class="fiche-pied">
@@ -1039,6 +1090,7 @@ function ouvrirFiche(a) {
     await api("/api/addon", { addon: fiche(a), ancien_id: a.id });
     f.querySelectorAll("[data-statut]").forEach(x => x.setAttribute("aria-pressed", x === b));
   }));
+  if (f.querySelector(".fiche-reglages")) brancherReglages(a, f);
   const reinstaller = f.querySelector("#fiche-reinstaller");
   if (reinstaller) reinstaller.onclick = () => { d.close(); actions.installer(a); };
   f.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
@@ -1051,6 +1103,59 @@ function ouvrirFiche(a) {
   ajuster();
   notes.focus();
   notes.setSelectionRange(notes.value.length, notes.value.length);
+}
+
+// --- Réglages d'un addon : export / import d'un zip de ses fichiers du dossier WTF --------------
+function brancherReglages(a, f) {
+  const etat = f.querySelector("#fiche-reglages-etat"), exporter = f.querySelector("#fiche-exporter");
+  const lister = () => api("/api/reglages", { id: a.id }).then(r => {
+    const parties = [r.compte && "le compte", r.persos.length && (r.persos.length === 1 ? r.persos[0] : `${r.persos.length} personnages`)].filter(Boolean);
+    etat.textContent = parties.length ? "Enregistrés pour " + parties.join(" et ") : "Aucun pour l'instant";
+    if (r.persos.length > 1) etat.title = r.persos.join("\n");
+    exporter.disabled = !parties.length;
+  }).catch(e => { etat.textContent = e.message; });
+  lister();
+  exporter.onclick = () => occupe(exporter, async () => {
+    const r = await apiExplorateur("/api/reglages/exporter", { id: a.id });
+    toast(`Réglages exportés dans Téléchargements :\n${r.nom}`);
+  });
+  f.querySelector("#fiche-importer").onclick = () => {
+    const i = document.getElementById("i-reglages");
+    i.value = "";
+    i.onchange = () => i.files[0] && preparerImport(a, i.files[0], lister);
+    i.click();
+  };
+}
+
+async function preparerImport(a, fichier, apres) {
+  await occupe(null, async () => {
+    const octets = await fichier.arrayBuffer();
+    const lu = await api("/api/reglages/lire?" + new URLSearchParams({ id: a.id }), octets, true);
+    const d = document.getElementById("d-reglages");
+    document.getElementById("reg-source").textContent =
+      `${lu.source || a.nom}${lu.exporte_le ? `, exportés le ${new Date(lu.exporte_le.replace(" ", "T")).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : ""}.`;
+    const option = (v, t, choisi) => `<option value="${esc(v)}"${choisi ? " selected" : ""}>${esc(t)}</option>`;
+    document.getElementById("reg-lignes").innerHTML = lu.fichiers.map((x, n) => {
+      const choix = x.perso
+        ? option("", "Ne pas importer", false) + lu.persos.map(p => option(p.cle, `${p.perso} (${p.royaume})${lu.comptes.length > 1 ? " — " + p.compte : ""}`,
+            p.compte === x.compte && p.royaume === x.royaume && p.perso === x.perso)).join("")
+        : option("", "Ne pas importer", false) + lu.comptes.map(c => option(c, `Compte ${c}`, c === x.compte || lu.comptes.length === 1)).join("");
+      return `<label>${x.perso ? `Réglages du personnage ${esc(x.perso)} (${esc(x.royaume)})` : `Réglages du compte ${esc(x.compte)}`} → <select data-chemin="${esc(x.chemin)}">${choix}</select></label>`;
+    }).join("");
+    const erreur = document.getElementById("reg-erreur");
+    erreur.textContent = "";
+    document.getElementById("reg-importer").onclick = () => occupe(document.getElementById("reg-importer"), async () => {
+      const plan = Object.fromEntries([...d.querySelectorAll("select[data-chemin]")].map(s => [s.dataset.chemin, s.value]));
+      erreur.textContent = "";
+      let r;
+      try { r = await api("/api/reglages/importer?" + new URLSearchParams({ id: a.id, plan: JSON.stringify(plan) }), octets, true); }
+      catch (e) { erreur.textContent = e.message; return; }   // dans la fenêtre : un message en bas serait caché derrière
+      d.close();
+      toast(`${r.importes} fichier${r.importes > 1 ? "s" : ""} de réglages importé${r.importes > 1 ? "s" : ""}.` + (r.sauvegarde ? "\nLes anciens réglages sont dans les sauvegardes." : ""));
+      apres();
+    });
+    d.showModal();
+  });
 }
 
 const ICONES_FICHE = {
@@ -1133,7 +1238,8 @@ document.getElementById("b-jouer").onclick = e => occupe(e.currentTarget, async 
   await api("/api/jouer", {});
   toast("WoW Forever se lance.");
 });
-document.getElementById("b-dossier").onclick = e => occupe(e.currentTarget, () => api("/api/dossier-addons", {}));
+document.getElementById("b-dossier").onclick = e => occupe(e.currentTarget, () => apiExplorateur("/api/dossier-addons", {}));
+document.getElementById("b-wtf").onclick = e => occupe(e.currentTarget, () => apiExplorateur("/api/dossier-wtf", {}));
 document.getElementById("b-verifier").onclick = e => occupe(e.currentTarget, async () => {
   const r = await api("/api/verifier", {});
   const erreurs = Object.values(r).filter(x => x.erreur).length;
@@ -1194,6 +1300,9 @@ document.getElementById("b-reglages").onclick = e => ouvrirMenu(e.currentTarget,
     }) },
   { texte: "Relire le dossier AddOns", action: () => charger() },
   { texte: "Nouveautés de la version", action: () => montrerNouveautes() },
+  "-",
+  { texte: "Signaler un bug", action: () => ouvrirSignalement() },
+  { texte: "Soutenir le projet", action: () => window.open(LIEN_DON, "_blank") },
   "-",
   { texte: "Quitter Forever Addons Manager", danger: true, action: () => {
       if (!confirm("Quitter Forever Addons Manager ?\nL'icône près de l'horloge disparaît jusqu'au prochain lancement.")) return;
@@ -1296,6 +1405,53 @@ async function montrerNouveautes() {
   });
 }
 document.getElementById("b-version").onclick = montrerNouveautes;
+
+// --- Signaler un bug / soutenir le projet ----------------------------------------------
+const LIEN_DON = "https://ko-fi.com/hamaxtips";
+const FORMSPREE_BUG = "https://formspree.io/f/xyezeegg";   // formulaire partagé avec KELZONE
+const formBug = document.getElementById("f-bug");
+const statutBug = document.getElementById("bug-statut");
+const envoyerBug = document.getElementById("bug-envoyer");
+function majSujetBug() { document.getElementById("l-bug-addon").hidden = formBug.sujet.value !== "addon"; }
+formBug.querySelectorAll("[name=sujet]").forEach(r => r.onchange = majSujetBug);
+function ouvrirSignalement() {
+  const noms = (ETAT?.addons || []).map(a => a.nom).sort((x, y) => x.localeCompare(y, "fr"));
+  formBug.addon.innerHTML = noms.map(n => `<option>${esc(n)}</option>`).join("");
+  formBug.sujet.value = "appli";
+  formBug.description.value = "";
+  statutBug.textContent = ""; statutBug.style.color = "";
+  envoyerBug.disabled = false; envoyerBug.textContent = "Envoyer";
+  majSujetBug();
+  document.getElementById("d-bug").showModal();
+  formBug.description.focus();
+}
+envoyerBug.onclick = async () => {
+  const surAddon = formBug.sujet.value === "addon";
+  const description = formBug.description.value.trim();
+  if (!description) { statutBug.textContent = "Décris le problème en quelques mots."; statutBug.style.color = "var(--rouge)"; return; }
+  envoyerBug.disabled = true; envoyerBug.textContent = "Envoi…";
+  statutBug.textContent = ""; statutBug.style.color = "";
+  try {
+    const r = await fetch(FORMSPREE_BUG, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({
+        _subject: "Bug — Forever Addons Manager",
+        appli: "Forever Addons Manager",
+        version: "v" + (ETAT?.version || "?"),
+        type: surAddon ? "Bug avec un addon" : "Bug dans l'appli",
+        addon: surAddon ? formBug.addon.value : "",
+        description,
+      }),
+    });
+    if (!r.ok) throw new Error();
+    statutBug.textContent = "Envoyé, merci !"; statutBug.style.color = "var(--vert)";
+    setTimeout(() => document.getElementById("d-bug").close(), 1200);
+  } catch {
+    statutBug.textContent = "L'envoi a échoué. Vérifie ta connexion et réessaie."; statutBug.style.color = "var(--rouge)";
+    envoyerBug.disabled = false; envoyerBug.textContent = "Envoyer";
+  }
+};
 
 document.querySelectorAll("[data-fermer]").forEach(b => b.onclick = () => b.closest("dialog").close("annuler"));
 

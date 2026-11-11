@@ -37,7 +37,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
@@ -1062,19 +1062,295 @@ def lier(addon_id):
     return {"lien": str(dest), "cible": str(source)}
 
 
+def ouvrir_explorateur(dossier, selection=None):
+    """Ouvre le dossier dans l'Explorateur (fichier `selection` surligné), au premier plan. Lancé depuis le serveur
+    (qui n'a pas la main), l'Explorateur s'ouvrirait derrière la fenêtre de l'appli : on va chercher sa fenêtre
+    et on la ramène devant."""
+    if selection:
+        subprocess.Popen(f'explorer /select,"{selection}"')   # l'Explorateur veut les guillemets après la virgule
+    else:
+        os.startfile(dossier)
+    threading.Thread(target=_ramener_explorateur, args=(nom_affiche(dossier),), daemon=True).start()
+
+
+def nom_affiche(dossier):
+    """Le nom que l'Explorateur met dans son titre : « Téléchargements » pour Downloads, sinon le nom du dossier."""
+    from ctypes import wintypes
+
+    class SHFILEINFOW(ctypes.Structure):
+        _fields_ = [("hIcon", wintypes.HANDLE), ("iIcon", ctypes.c_int), ("dwAttributes", wintypes.DWORD),
+                    ("szDisplayName", wintypes.WCHAR * 260), ("szTypeName", wintypes.WCHAR * 80)]
+    info = SHFILEINFOW()
+    try:
+        if ctypes.windll.shell32.SHGetFileInfoW(str(dossier), 0, ctypes.byref(info), ctypes.sizeof(info), 0x200):  # SHGFI_DISPLAYNAME
+            return info.szDisplayName or Path(dossier).name
+    except OSError:
+        pass
+    return Path(dossier).name
+
+
+def _ramener_explorateur(nom):
+    import time
+    from ctypes import wintypes
+    user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
+    user32.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.c_void_p)
+
+    def chercher():
+        trouvees = []
+
+        @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        def visiter(hwnd, _):
+            classe = ctypes.create_unicode_buffer(64)
+            user32.GetClassNameW(hwnd, classe, 64)
+            if classe.value == "CabinetWClass" and user32.IsWindowVisible(hwnd):
+                n = user32.GetWindowTextLengthW(hwnd)
+                titre = ctypes.create_unicode_buffer(n + 1)
+                user32.GetWindowTextW(hwnd, titre, n + 1)
+                # Titre « AddOns : Explorateur de fichiers », « AddOns - File Explorer » ou « AddOns » seul
+                reste = titre.value[len(nom):].strip() if titre.value.startswith(nom) else None
+                if reste is not None and reste[:1] in ("", ":", "-", "–", "—"):
+                    trouvees.append(hwnd)
+                    return False
+            return True
+
+        user32.EnumWindows(visiter, 0)
+        return trouvees[0] if trouvees else None
+
+    for _ in range(25):                       # l'Explorateur peut mettre un moment à ouvrir : jusqu'à 5 s
+        time.sleep(0.2)
+        hwnd = chercher()
+        if not hwnd:
+            continue
+        if user32.GetForegroundWindow() == hwnd:
+            return
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, 9)        # SW_RESTORE
+        # Windows ne laisse passer devant que si on partage la file d'entrée de la fenêtre active
+        actif = user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), None)
+        moi = kernel32.GetCurrentThreadId()
+        attache = actif and actif != moi and user32.AttachThreadInput(moi, actif, True)
+        try:
+            user32.BringWindowToTop(hwnd)
+            user32.SetForegroundWindow(hwnd)
+        finally:
+            if attache:
+                user32.AttachThreadInput(moi, actif, False)
+        # Pas de return : si Windows a refusé, on réessaie au tour suivant (la fenêtre de l'appli a pu
+        # donner sa permission entre-temps, voir ApiFenetre.premier_plan)
+
+
 def ouvrir(addon_id):
     addon = trouver_addon(addon_id)
     base = dossier_addons()
     dossier = next((base / d for d in addon.get("dossiers", []) if (base / d).exists()), base)
-    os.startfile(dossier)
+    ouvrir_explorateur(dossier)
     return {"ouvert": str(dossier)}
 
 
 def ouvrir_dossier_addons():
     """Bouton « Mon dossier addons » : le dossier AddOns du jeu dans l'Explorateur."""
     dossier = dossier_addons()
-    os.startfile(dossier)
+    ouvrir_explorateur(dossier)
     return {"ouvert": str(dossier)}
+
+
+def dossier_wtf():
+    """WTF est à côté d'Interface : …\\_retail_\\Interface\\AddOns → …\\_retail_\\WTF."""
+    dossier = dossier_addons().parent.parent / "WTF"
+    if not dossier.is_dir():
+        raise Erreur(f"Pas de dossier WTF dans {dossier.parent} : lance le jeu une fois pour qu'il le crée.")
+    return dossier
+
+
+def ouvrir_dossier_wtf():
+    """Bouton « Mon dossier WTF » : réglages et sauvegardes des addons (SavedVariables)."""
+    dossier = dossier_wtf()
+    ouvrir_explorateur(dossier)
+    return {"ouvert": str(dossier)}
+
+
+# --- Réglages d'un addon (SavedVariables du dossier WTF) --------------------------------
+# WoW range les réglages de chaque addon dans un fichier à son nom de dossier :
+#   WTF\Account\<COMPTE>\SavedVariables\<Dossier>.lua                       → pour tout le compte
+#   WTF\Account\<COMPTE>\<Royaume>\<Perso>\SavedVariables\<Dossier>.lua     → pour un personnage
+# L'export les met dans un zip avec reglages.json, que l'import relit pour les reposer où on veut.
+
+TYPE_EXPORT_REGLAGES = "forever-addons-reglages"
+
+
+def comptes_et_persos():
+    """Les comptes et personnages connus du dossier WTF : ({compte: dossier}, [(compte, royaume, perso, dossier)])."""
+    racine = dossier_wtf() / "Account"
+    comptes, persos = {}, []
+    if not racine.is_dir():
+        return comptes, persos
+    for compte in sorted(p for p in racine.iterdir() if p.is_dir() and p.name != "SavedVariables"):
+        comptes[compte.name] = compte
+        for royaume in sorted(p for p in compte.iterdir() if p.is_dir() and p.name != "SavedVariables"):
+            for perso in sorted(p for p in royaume.iterdir() if p.is_dir()):
+                persos.append((compte.name, royaume.name, perso.name, perso))
+    return comptes, persos
+
+
+def _noms_reglages(addon):
+    """Noms de fichier de réglages de l'addon, en minuscules (Windows ignore la casse) → nom attendu."""
+    return {f"{d}.lua".lower(): f"{d}.lua" for d in addon.get("dossiers", [])}
+
+
+def fichiers_reglages(addon):
+    noms = _noms_reglages(addon)
+    comptes, persos = comptes_et_persos()
+    trouves = []
+    lieux = [(c, "", "", d) for c, d in comptes.items()] + persos
+    for compte, royaume, perso, dossier in lieux:
+        sv = dossier / "SavedVariables"
+        if not sv.is_dir():
+            continue
+        for f in sorted(sv.iterdir()):
+            if f.is_file() and f.name.lower() in noms:
+                trouves.append({"compte": compte, "royaume": royaume, "perso": perso, "fichier": f})
+    return trouves
+
+
+def lister_reglages(addon_id):
+    addon = trouver_addon(addon_id)
+    fichiers = fichiers_reglages(addon)
+    return {
+        "compte": any(not f["perso"] for f in fichiers),
+        "persos": sorted({f"{f['perso']} ({f['royaume']})" for f in fichiers if f["perso"]}),
+    }
+
+
+def dossier_telechargements():
+    try:
+        from ctypes import wintypes
+        chemin = ctypes.c_wchar_p()
+        guid = (ctypes.c_byte * 16)()
+        ctypes.windll.ole32.CLSIDFromString("{374DE290-123F-4565-9164-39C4925E467B}", guid)  # FOLDERID_Downloads
+        if ctypes.windll.shell32.SHGetKnownFolderPath(guid, 0, None, ctypes.byref(chemin)) == 0:
+            dossier = Path(chemin.value)
+            ctypes.windll.ole32.CoTaskMemFree(chemin)
+            if dossier.is_dir():
+                return dossier
+    except OSError:
+        pass
+    return Path.home() / "Downloads"
+
+
+def exporter_reglages(addon_id):
+    """Zip des réglages de l'addon dans Téléchargements, montré dans l'Explorateur."""
+    addon = trouver_addon(addon_id)
+    fichiers = fichiers_reglages(addon)
+    if not fichiers:
+        raise Erreur(f"{addon['nom']} n'a encore aucun réglage enregistré : lance le jeu avec l'addon une fois.")
+    contenu = []
+    tampon = io.BytesIO()
+    with zipfile.ZipFile(tampon, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in fichiers:
+            parties = ["perso", f["compte"], f["royaume"], f["perso"]] if f["perso"] else ["compte", f["compte"]]
+            chemin = "/".join(parties + [f["fichier"].name])
+            zf.write(f["fichier"], chemin)
+            contenu.append({"chemin": chemin, "compte": f["compte"], "royaume": f["royaume"], "perso": f["perso"]})
+        zf.writestr("reglages.json", json.dumps({
+            "type": TYPE_EXPORT_REGLAGES, "format": 1,
+            "addon": {"id": addon["id"], "nom": addon["nom"]},
+            "exporte_le": maintenant(), "appli": f"{NOM} {VERSION}",
+            "fichiers": contenu,
+        }, ensure_ascii=False, indent=2))
+    nom_sur = re.sub(r'[\\/:*?"<>|]+', "", addon["nom"]).strip() or addon["id"]
+    destination = dossier_telechargements() / f"Réglages {nom_sur} {datetime.now():%Y-%m-%d %H%M}.zip"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(tampon.getvalue())
+    ouvrir_explorateur(destination.parent, selection=destination)
+    return {"fichier": str(destination), "nom": destination.name}
+
+
+def _lire_export(octets, addon):
+    """Ouvre un zip de réglages et vérifie qu'il correspond bien à cet addon. Renvoie (zip, manifeste)."""
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(octets))
+        manifeste = json.loads(zf.read("reglages.json").decode("utf-8"))
+    except (zipfile.BadZipFile, KeyError, ValueError) as e:
+        raise Erreur("Ce fichier n'est pas un export de réglages de Forever Addons Manager.") from e
+    if manifeste.get("type") != TYPE_EXPORT_REGLAGES:
+        raise Erreur("Ce fichier n'est pas un export de réglages de Forever Addons Manager.")
+    if sum(i.file_size for i in zf.infolist()) > TAILLE_MAX_DECOMPRESSEE:
+        raise Erreur("Zip refusé : une fois décompressé, il dépasserait 1 Go.")
+    noms = _noms_reglages(addon)
+    presents = {i.filename for i in zf.infolist()}
+    fichiers = []
+    for f in manifeste.get("fichiers", []):
+        chemin = str(f.get("chemin", ""))
+        if chemin not in presents:
+            continue
+        if chemin.rsplit("/", 1)[-1].lower() not in noms:
+            source = (manifeste.get("addon") or {}).get("nom") or "un autre addon"
+            raise Erreur(f"Ce fichier contient les réglages de {source}, pas de {addon['nom']}.")
+        fichiers.append({k: str(f.get(k) or "") for k in ("chemin", "compte", "royaume", "perso")})
+    if not fichiers:
+        raise Erreur("Cet export ne contient aucun réglage.")
+    return zf, {**manifeste, "fichiers": fichiers}
+
+
+def lire_export_reglages(octets, addon_id):
+    """Première étape de l'import : ce que contient le zip, et où on peut le poser."""
+    addon = trouver_addon(addon_id)
+    _zf, manifeste = _lire_export(octets, addon)
+    comptes, persos = comptes_et_persos()
+    if not comptes:
+        raise Erreur("Aucun compte dans le dossier WTF : lance le jeu et connecte-toi une fois.")
+    return {
+        "source": (manifeste.get("addon") or {}).get("nom", ""),
+        "exporte_le": manifeste.get("exporte_le", ""),
+        "fichiers": manifeste["fichiers"],
+        "comptes": list(comptes),
+        "persos": [{"cle": f"{c}/{r}/{p}", "compte": c, "royaume": r, "perso": p} for c, r, p, _d in persos],
+    }
+
+
+def jeu_ouvert():
+    try:
+        r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq Wow.exe", "/NH", "/FO", "CSV"], capture_output=True,
+                           text=True, timeout=10, creationflags=subprocess.CREATE_NO_WINDOW)
+        return '"wow.exe"' in r.stdout.lower()
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def importer_reglages(octets, addon_id, plan):
+    """Pose les réglages du zip. `plan` : {chemin dans le zip: compte (réglages du compte) ou « compte/royaume/perso »,
+    ou "" pour ne pas l'importer}. Les fichiers remplacés partent dans sauvegardes/."""
+    addon = trouver_addon(addon_id)
+    if jeu_ouvert():
+        raise Erreur("Ferme le jeu avant d'importer : WoW réécrit ses réglages en quittant et effacerait l'import.")
+    zf, manifeste = _lire_export(octets, addon)
+    comptes, persos = comptes_et_persos()
+    lieux_persos = {f"{c}/{r}/{p}": d for c, r, p, d in persos}
+    noms = _noms_reglages(addon)
+    a_ecrire = []
+    for f in manifeste["fichiers"]:
+        cible = str(plan.get(f["chemin"]) or "")
+        if not cible:
+            continue
+        # Les cibles viennent des listes du dossier WTF, jamais telles quelles du zip ou de la page
+        dossier = lieux_persos.get(cible) if f["perso"] else comptes.get(cible)
+        if dossier is None:
+            raise Erreur(f"Destination inconnue : {cible}")
+        nom = noms[f["chemin"].rsplit("/", 1)[-1].lower()]
+        a_ecrire.append((f["chemin"], dossier / "SavedVariables" / nom))
+    if not a_ecrire:
+        raise Erreur("Rien à importer : choisis au moins une destination.")
+
+    wtf = dossier_wtf()
+    sauvegarde = DOSSIER_SAUVEGARDES / addon["id"] / (datetime.now().strftime("%Y-%m-%d_%H%M%S") + "_reglages")
+    for chemin, dest in a_ecrire:
+        if dest.exists():
+            copie = sauvegarde / dest.relative_to(wtf)
+            copie.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(dest, copie)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(zf.read(chemin))
+    return {"importes": len(a_ecrire), "sauvegarde": str(sauvegarde) if sauvegarde.exists() else ""}
 
 
 # --- Lancer le jeu ---------------------------------------------------------------------
@@ -1613,6 +1889,16 @@ def limiter_liens_externes():
     webbrowser.open = filtre
 
 
+class ApiFenetre:
+    """Appelable depuis la page (window.pywebview.api) : uniquement ce qui doit venir de la fenêtre elle-même."""
+
+    def premier_plan(self):
+        """Juste avant d'ouvrir l'Explorateur : la fenêtre de l'appli, qui a la main, autorise les autres
+        programmes à passer devant. Sans ça, Windows ouvre le dossier derrière elle."""
+        ctypes.windll.user32.AllowSetForegroundWindow(-1)   # ASFW_ANY
+        return True
+
+
 def fenetre_seule():
     """Processus --fenetre : montre l'interface, et se termine quand on ferme la fenêtre."""
     global FENETRE
@@ -1622,7 +1908,7 @@ def fenetre_seule():
     import webview
     DOSSIER_WEBVIEW.mkdir(parents=True, exist_ok=True)
     FENETRE = webview.create_window(NOM, adresse_interface(), width=1280, height=880, min_size=TAILLE_MINI,
-                                    background_color="#0f0d0a")
+                                    background_color="#0f0d0a", js_api=ApiFenetre())
     FENETRE.events.before_show += _restaurer_placement
     FENETRE.events.before_show += _suivre_placement
     FENETRE.events.shown += _apres_affichage
@@ -1896,6 +2182,12 @@ class Gestionnaire(BaseHTTPRequestHandler):
             if url.path == "/api/installer-zip":
                 q = urllib.parse.parse_qs(url.query)
                 return self.envoyer(200, installer_zip(corps, (q.get("id") or [None])[0], (q.get("nom") or [""])[0]))
+            if url.path in ("/api/reglages/lire", "/api/reglages/importer"):
+                q = urllib.parse.parse_qs(url.query)
+                addon_id = (q.get("id") or [""])[0]
+                if url.path == "/api/reglages/lire":
+                    return self.envoyer(200, lire_export_reglages(corps, addon_id))
+                return self.envoyer(200, importer_reglages(corps, addon_id, json.loads((q.get("plan") or ["{}"])[0])))
             donnees = json.loads(corps or b"{}")
             routes = {
                 "/api/addon": lambda: enregistrer_addon(donnees["addon"], donnees.get("ancien_id")),
@@ -1918,6 +2210,9 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 "/api/ouvrir": lambda: ouvrir(donnees["id"]),
                 "/api/jouer": jouer,
                 "/api/dossier-addons": ouvrir_dossier_addons,
+                "/api/dossier-wtf": ouvrir_dossier_wtf,
+                "/api/reglages": lambda: lister_reglages(donnees["id"]),
+                "/api/reglages/exporter": lambda: exporter_reglages(donnees["id"]),
                 "/api/demarrage": lambda: regler_demarrage(bool(donnees.get("actif"))),
                 "/api/quitter": demander_arret,
             }
