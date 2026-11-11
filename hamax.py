@@ -37,7 +37,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.7.9"
+VERSION = "1.0.0"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
@@ -396,6 +396,7 @@ def etat():
         "jeu_confirme": bool(config.get("jeu_confirme")),
         "liens_curseforge": liens_curseforge_actifs(),
         "maj_appli": MAJ_APPLI or None,
+        "guilde": etat_guilde(addons),
         "evenements": [EVENEMENTS.pop(0) for _ in range(len(EVENEMENTS))],
         "version": VERSION,
         "statuts": STATUTS,
@@ -648,6 +649,51 @@ def ajouter_curseforge(projet, canal="release"):
     distant = derniere_curseforge(projet, canal)
     source = {"type": "curseforge", "projet": int(projet), "url": "", "canal": canal}
     resultat = installer_zip(telecharger(distant["url_zip"]), fichier=distant, source=source)
+    with verrou:
+        maj = lire_json(FICHIER_MAJ, {})
+        maj[resultat["id"]] = distant
+        ecrire_json(FICHIER_MAJ, maj)
+    return resultat
+
+
+# --- Addon de la guilde : proposé à tous, installé et mis à jour depuis ses releases GitHub ---------
+
+ADDON_GUILDE = {
+    "nom": "Aux Ptits Casus",
+    "dossier": "PtitsCasus",
+    "source": {"type": "github", "url": "https://github.com/mfarchitecture-ctrl/aux-ptits-casus", "motif": "forever"},
+}
+
+
+def addon_guilde(addons):
+    return next((a for a in addons if ADDON_GUILDE["dossier"] in a.get("dossiers", [])), None)
+
+
+def etat_guilde(addons):
+    """Ce que l'interface propose pour l'addon de la guilde, ou None s'il est déjà installé et suivi."""
+    a = addon_guilde(addons)
+    if a and (a.get("perso") or (a["installe"] and a.get("source", {}).get("type") == "github")):
+        return None
+    return {"nom": ADDON_GUILDE["nom"], "installe": bool(a and a["installe"])}
+
+
+def installer_guilde():
+    """Installe l'addon de la guilde, ou relie aux mises à jour GitHub une copie posée à la main (zip du Discord)."""
+    source = dict(ADDON_GUILDE["source"])
+    deja = addon_guilde(charger_registre()["addons"])
+    if deja:
+        if deja.get("perso"):
+            raise Erreur(f"{deja['nom']} est relié à ton dossier de code : je n'y touche pas.")
+        enregistrer_addon({**deja, "source": source, "statut": "valide"}, deja["id"])
+        return installer_distant(deja["id"])
+    distant = derniere_github(source)
+    if not distant.get("url_zip"):
+        raise Erreur("La dernière version de l'addon de la guilde n'a pas de fichier .zip.")
+    try:
+        resultat = installer_zip(telecharger(distant["url_zip"], "guilde"), fichier=distant, source=source)
+    finally:
+        PROGRESSION.pop("guilde", None)
+    enregistrer_addon({**trouver_addon(resultat["id"]), "statut": "valide"}, resultat["id"])
     with verrou:
         maj = lire_json(FICHIER_MAJ, {})
         maj[resultat["id"]] = distant
@@ -1119,10 +1165,10 @@ def priorite_arriere_plan():
         pass
 
 
-def notifier(titre, texte):
+def notifier(titre, texte, toujours=False):
     """Bulle de l'icône près de l'horloge : Windows l'affiche au nom de l'appli.
-    Désactivé par défaut (« notifications » dans config.json)."""
-    if not charger_config().get("notifications") or ICONE is None:
+    Désactivé par défaut (« notifications » dans config.json), sauf avec « toujours »."""
+    if ICONE is None or not (toujours or charger_config().get("notifications")):
         return
     try:
         ICONE.notify(texte, titre)
@@ -1210,9 +1256,23 @@ def verifier_tout(ids=None):
     return verifier(ids)
 
 
+APPLI_SIGNALEE = set()   # versions de l'appli déjà annoncées par une bulle pendant cette session
+
+
+def signaler_maj_appli():
+    """Une bulle par nouvelle version de l'appli, même si les notifications sont coupées :
+    sans elle, qui laisse l'appli près de l'horloge ne verrait jamais la mise à jour."""
+    version = MAJ_APPLI.get("version")
+    if version and version not in APPLI_SIGNALEE:
+        APPLI_SIGNALEE.add(version)
+        notifier(NOM, f"La version {version} est disponible. Ouvre l'appli pour l'installer en un clic.", toujours=True)
+
+
 def verifier_et_signaler(deja_signale=None):
     """Vérifie tout et notifie. Avec deja_signale : seulement les mises à jour pas encore annoncées."""
-    verifier_tout()
+    chercher_maj_appli()
+    signaler_maj_appli()   # avant les addons : un souci côté CurseForge ne doit pas taire la mise à jour de l'appli
+    verifier()
     dispo = [a for a in etat()["addons"] if a["installe"] and (a.get("maj") or {}).get("dispo")]
     if deja_signale is None:
         texte = f"{len(dispo)} mise(s) à jour : " + ", ".join(a["nom"] for a in dispo) if dispo else "Tous tes addons sont à jour."
@@ -1845,6 +1905,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 "/api/appli/verifier": verifier_appli,
                 "/api/installer": lambda: installer_distant(donnees["id"]),
                 "/api/installer-curseforge": lambda: ajouter_curseforge(donnees["projet"]),
+                "/api/installer-guilde": installer_guilde,
                 "/api/jeu/analyser": analyser_jeu,
                 "/api/jeu/choisir": lambda: choisir_jeu(donnees["chemin"]),
                 "/api/jeu/parcourir": parcourir_jeu,

@@ -1,5 +1,10 @@
 # Nouveautés de Forever Addons Manager
 
+## 1.0.0 — 11 novembre 2026
+- **Version 1.0, pour toute la guilde.**
+- **Aux Ptits Casus en un clic** : si l'addon de la guilde n'est pas installé, un bandeau te propose de l'installer. Il se met ensuite à jour comme les autres addons. Si tu l'avais déjà installé à la main depuis le Discord, le bandeau le relie à ses mises à jour.
+- **Tu ne rates plus une nouvelle version de l'appli** : une bulle près de l'horloge te prévient, même fenêtre fermée. Un clic sur « Mettre à jour l'appli » et c'est fait.
+
 ## 0.7.9 — 9 novembre 2026
 - **Nouvelle fiche d'addon** : une bannière aux couleurs de son logo, le statut en couleur, les infos utiles visibles d'un coup d'œil et une note façon post-it.
 - **Onglet Rechercher ↗** à droite des onglets : il ouvre la recherche d'addons WoW Forever sur CurseForge, dans ton navigateur.

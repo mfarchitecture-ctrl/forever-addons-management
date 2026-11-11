@@ -674,6 +674,10 @@ function rendre() {
   if (ETAT.maj_appli) {
     html += `<div class="${avis("appli " + ETAT.maj_appli.version)}"><span><b>${NOM} ${esc(ETAT.maj_appli.version)}</b> est disponible.</span><button class="btn petit avis-premier" id="b-notes-appli">Nouveautés</button><button class="btn or petit" id="b-maj-appli">Mettre à jour l'appli</button></div>`;
   }
+  if (ETAT.guilde && ETAT.dossier_ok) {
+    const g = ETAT.guilde;
+    html += `<div class="${avis("guilde " + g.installe)}"><span><b>${esc(g.nom)}</b>, l'addon de la guilde, ${g.installe ? "n'est pas relié à ses mises à jour." : "n'est pas encore installé."}</span><button class="btn or petit" id="b-guilde">${g.installe ? "Activer les mises à jour" : "Installer"}</button></div>`;
+  }
   const maj = ETAT.addons.filter(aMaj);
   if (maj.length && onglet !== "inconnus") {
     html += `<div class="${avis("addons " + maj.map(a => a.id + a.maj.version).join(","))}"><span>${maj.length === 1 ? `<b>${esc(maj[0].nom)}</b> peut passer en ${esc(maj[0].maj.version)}` : `<b>${maj.length} mises à jour</b> : ${esc(maj.map(a => a.nom).join(", "))}`}</span><button class="btn or petit" id="b-tout">Tout mettre à jour</button></div>`;
@@ -882,6 +886,11 @@ async function mettreAJourAppli() {
 
 document.getElementById("contenu").addEventListener("click", ev => {
   if (ev.target.closest("#b-maj-appli")) return mettreAJourAppli();
+  if (ev.target.closest("#b-guilde")) return occupe(ev.target.closest("#b-guilde"), async () => {
+    const r = await enCours(`Installation de ${ETAT.guilde.nom}…`, () => api("/api/installer-guilde", {}));
+    toast(`${r.nom} installé. Ses mises à jour te seront proposées comme pour les autres addons.`);
+    await charger();
+  });
   if (ev.target.closest("#b-notes-appli")) {
     document.getElementById("journal").innerHTML = markdownSimple(`## ${ETAT.maj_appli.version}\n${ETAT.maj_appli.notes}`);
     return document.getElementById("d-changelog").showModal();
