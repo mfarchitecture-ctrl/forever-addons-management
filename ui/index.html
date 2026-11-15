@@ -889,7 +889,7 @@ async function toutMettreAJour(bouton) {
         try { await api("/api/installer", { id: a.id }); toast(`${a.nom} mis à jour.`); }
         catch (e) { toast(`${a.nom} : ${e.message}`, "erreur"); }
         delete PROGRES[a.id];
-        rendre();
+        await charger();   // l'addon fini perd tout de suite son bouton « Mettre à jour », sans attendre les autres
       }
     }));
   });
@@ -1240,6 +1240,20 @@ document.getElementById("b-jouer").onclick = e => occupe(e.currentTarget, async 
 });
 document.getElementById("b-dossier").onclick = e => occupe(e.currentTarget, () => apiExplorateur("/api/dossier-addons", {}));
 document.getElementById("b-wtf").onclick = e => occupe(e.currentTarget, () => apiExplorateur("/api/dossier-wtf", {}));
+// À l'ouverture : vérifie en silence si la dernière vérification date de plus de 30 minutes
+async function verifierSiAncien() {
+  const dates = ETAT.addons.filter(a => distant(a) && a.installe).map(a => a.maj?.verifie_le);
+  if (!dates.length) return;
+  const plusAncienne = dates.every(Boolean) ? new Date(dates.sort()[0].replace(" ", "T")) : null;
+  if (plusAncienne && Date.now() - plusAncienne < 30 * 60 * 1000) return;
+  const bouton = document.getElementById("b-verifier");
+  if (bouton.disabled) return;
+  await occupe(bouton, async () => {
+    await api("/api/verifier", {});
+    await charger();
+  }).catch(() => {});
+}
+
 document.getElementById("b-verifier").onclick = e => occupe(e.currentTarget, async () => {
   const r = await api("/api/verifier", {});
   const erreurs = Object.values(r).filter(x => x.erreur).length;
@@ -1461,6 +1475,7 @@ charger().then(() => {
   const vue = lireLocal("version-vue");
   ecrireLocal("version-vue", ETAT.version);
   if (vue && vue !== ETAT.version) montrerNouveautes();
+  verifierSiAncien();
 });
 </script>
 </body>

@@ -1,5 +1,9 @@
 # Nouveautés de Forever Addons Manager
 
+## 1.0.2 — 15 novembre 2026
+- **Les mises à jour sont cherchées à l'ouverture** : plus besoin de cliquer sur « Vérifier les mises à jour » quand tu ouvres l'appli, elle le fait toute seule si la dernière vérification date de plus de 30 minutes.
+- **Tout mettre à jour** : chaque addon terminé passe à « À jour » tout de suite, sans attendre que les autres aient fini.
+
 ## 1.0.1 — 11 novembre 2026
 - **Les réglages d'un addon** : sur sa fiche, **Exporter** met ses réglages (ceux du compte et de chaque personnage) dans un fichier .zip, rangé dans Téléchargements. **Importer** les remet en place, sur le personnage de ton choix : pratique pour une sauvegarde, un nouveau perso ou un ami. Le jeu doit être fermé, et les anciens réglages sont gardés dans les sauvegardes.
 - **Bouton Mon dossier WTF** en haut, à côté de Mon dossier addons : il ouvre le dossier des réglages du jeu.
