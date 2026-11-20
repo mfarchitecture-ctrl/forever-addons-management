@@ -216,7 +216,8 @@
   /* Barre de progression d'une installation */
   .progres { position: relative; display: inline-block; width: 160px; height: 26px; border: 1px solid var(--ligne-forte); border-radius: 5px; overflow: hidden; background: var(--fond); vertical-align: middle; }
   .progres i { position: absolute; inset: 0 auto 0 0; background: var(--or-fonce); opacity: .55; transition: width .25s; }
-  .progres span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--texte); }
+  .progres span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--texte); white-space: nowrap; }
+  .carte .progres { width: 84px; }
 
   /* Filtres par genre et tri */
   .filtres { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 16px; }
@@ -611,17 +612,19 @@ function version(a) {
   return esc(v || "");
 }
 
-function texteProgres(p) {
-  if (p.etape === "attente") return "En attente…";
-  if (p.etape === "installation") return "Installation…";
-  return p.pourcent === null ? `Téléchargement ${String(p.mo).replace(".", ",")} Mo` : `Téléchargement ${p.pourcent} %`;
+// court : libellé raccourci pour la barre étroite des cartes (la version reste lisible à côté)
+function texteProgres(p, court = false) {
+  if (p.etape === "attente") return court ? "Attente…" : "En attente…";
+  if (p.etape === "installation") return court ? "Install…" : "Installation…";
+  const quoi = p.pourcent === null ? `${String(p.mo).replace(".", ",")} Mo` : `${p.pourcent} %`;
+  return (court ? "↓ " : "Téléchargement ") + quoi;
 }
-const barreProgres = (id, p) => `<span class="progres" data-progres="${esc(id)}"><i style="width:${p.pourcent ?? 0}%"></i><span>${texteProgres(p)}</span></span>`;
+const barreProgres = (id, p, court = false) => `<span class="progres" data-progres="${esc(id)}"><i style="width:${p.pourcent ?? 0}%"></i><span>${texteProgres(p, court)}</span></span>`;
 
 // Le bouton d'action d'un addon, ou la barre s'il s'installe
-function actionAddon(a) {
+function actionAddon(a, court = false) {
   const cls = "btn petit";
-  if (PROGRES[a.id]) return barreProgres(a.id, PROGRES[a.id]);
+  if (PROGRES[a.id]) return barreProgres(a.id, PROGRES[a.id], court);
   if (!a.installe && !a.perso && !(distant(a) && a.source?.projet)) return `<button class="${cls}" data-act="chercher">Chercher</button>`;
   if (aMaj(a)) return `<button class="${cls} or" data-act="installer">Mettre à jour</button>`;
   if (!a.installe && a.source?.type === "local") return `<button class="${cls}" data-act="lier">Installer</button>`;
@@ -681,7 +684,7 @@ function carte(a) {
     </div></div>
     <p>${esc(description(a)) || `<span class="doux">Pas de description.</span>`}</p>
     <button class="note-zone ${a.notes ? "pleine" : ""}" data-act="note">${STYLO}<span>${esc(a.notes) || "Ajouter une note"}</span></button>
-    <div class="pied"><span class="etat-ligne">${ligneVersion(a)}</span><span class="droite">${actionAddon(a)}<button class="points" data-act="menu" title="Actions">⋯</button></span></div>
+    <div class="pied"><span class="etat-ligne">${ligneVersion(a)}</span><span class="droite">${actionAddon(a, true)}<button class="points" data-act="menu" title="Actions">⋯</button></span></div>
   </article>`;
 }
 
@@ -869,7 +872,7 @@ async function avecProgres(addons, fn) {
     for (const [id, p] of Object.entries(actuel)) {
       PROGRES[id] = p;
       const el = document.querySelector(`[data-progres="${CSS.escape(id)}"]`);
-      if (el) { el.querySelector("i").style.width = (p.pourcent ?? 0) + "%"; el.querySelector("span").textContent = texteProgres(p); }
+      if (el) { el.querySelector("i").style.width = (p.pourcent ?? 0) + "%"; el.querySelector("span").textContent = texteProgres(p, !!el.closest(".carte")); }
     }
   }, 300);
   try { await fn(); }
@@ -1472,8 +1475,9 @@ document.querySelectorAll("[data-fermer]").forEach(b => b.onclick = () => b.clos
 // Première ouverture après une mise à jour de l'appli : on montre les nouveautés une fois
 charger().then(() => {
   if (!ETAT) return;
-  const vue = lireLocal("version-vue");
-  ecrireLocal("version-vue", ETAT.version);
+  // La version vue est gardée par l'appli ; le localStorage ne sert plus qu'au passage depuis 1.0.2.
+  const vue = ETAT.version_vue || lireLocal("version-vue");
+  if (ETAT.version_vue !== ETAT.version) api("/api/version-vue", {}).catch(() => {});
   if (vue && vue !== ETAT.version) montrerNouveautes();
   verifierSiAncien();
 });

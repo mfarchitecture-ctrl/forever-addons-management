@@ -1,5 +1,10 @@
 # Nouveautés de Forever Addons Manager
 
+## 1.0.3 — 19 novembre 2026
+- **La version reste visible pendant un téléchargement** : sur les cartes, la barre de progression est plus étroite (« ↓ 19 % ») et ne cache plus le numéro de version.
+- **Les nouveautés ne s'affichent plus à chaque ouverture** : l'appli retient elle-même la dernière version que tu as vue.
+- **Les addons propres à WoW Forever** (fichier .toc en « _Forever ») sont mieux reconnus.
+
 ## 1.0.2 — 15 novembre 2026
 - **Les mises à jour sont cherchées à l'ouverture** : plus besoin de cliquer sur « Vérifier les mises à jour » quand tu ouvres l'appli, elle le fait toute seule si la dernière vérification date de plus de 30 minutes.
 - **Tout mettre à jour** : chaque addon terminé passe à « À jour » tout de suite, sans attendre que les autres aient fini.

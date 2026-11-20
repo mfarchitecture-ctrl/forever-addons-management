@@ -37,7 +37,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 NOM = "Forever Addons Manager"
 DEPOT = "mfarchitecture-ctrl/forever-addons-management"
 NOM_INSTALLATEUR = "Forever-Addons-Manager-Setup.exe"
@@ -67,7 +67,7 @@ STATUTS = ("a_tester", "valide", "rejete")
 ANCIENS_STATUTS = {"preinstalle": "a_tester", "adopte": "valide", "perso": "a_tester", "wishlist": "a_tester"}
 TYPES_SOURCE = ("curseforge", "github", "page", "local", "aucune")
 CANAUX = {"release": 1, "beta": 2, "alpha": 3}  # = releaseType CurseForge maximum accepté
-SUFFIXE_TOC = re.compile(r"[_-](Mainline|Classic|Vanilla|TBC|BCC|Wrath|WOTLKC|Cata|Mists|Camelot|Standard)$", re.I)
+SUFFIXE_TOC = re.compile(r"[_-](Mainline|Classic|Vanilla|TBC|BCC|Wrath|WOTLKC|Cata|Mists|Camelot|Standard|Forever)$", re.I)
 TAILLE_MAX_ZIP = 300 * 1024 * 1024
 TAILLE_MAX_DECOMPRESSEE = 1024 * 1024 * 1024   # un zip piégé ne doit pas remplir le disque
 AGENT = "Mozilla/5.0 (forever-addons-manager)"
@@ -399,6 +399,9 @@ def etat():
         "guilde": etat_guilde(addons),
         "evenements": [EVENEMENTS.pop(0) for _ in range(len(EVENEMENTS))],
         "version": VERSION,
+        # Dernière version dont l'utilisateur a vu les nouveautés. Gardée ici et non dans le localStorage
+        # de la fenêtre : WebView2 y relisait une ancienne valeur et les montrait à chaque ouverture.
+        "version_vue": config.get("version_vue"),
         "statuts": STATUTS,
         "types_source": TYPES_SOURCE,
     }
@@ -2215,6 +2218,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 "/api/reglages/exporter": lambda: exporter_reglages(donnees["id"]),
                 "/api/demarrage": lambda: regler_demarrage(bool(donnees.get("actif"))),
                 "/api/quitter": demander_arret,
+                "/api/version-vue": lambda: modifier_config(version_vue=VERSION) or {"version_vue": VERSION},
             }
             if url.path not in routes:
                 return self.envoyer(404, {"erreur": "introuvable"})
